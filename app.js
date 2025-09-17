@@ -45,7 +45,7 @@ const HELMET_CONFIG = {
 
 const CORS_CONFIG = {
   origin: true,
-  methods: ["GET", "POST"],
+  methods: ["GET", "POST", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
 
