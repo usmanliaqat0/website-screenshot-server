@@ -5,17 +5,17 @@ const { DEVICE_PRESETS } = require("./config");
 
 class ScreenshotService {
   constructor(baseUrl = null) {
-    this.timeout = 60000; // Reduced from 300s to 60s
+    this.timeout = 60000;
     this.uploadsDir = path.join(process.cwd(), "uploads");
     this.baseUrl = baseUrl;
     this.waitConfig = Object.freeze({
-      networkIdleTimeout: 8000, // Reduced from 15s
-      animationTimeout: 5000, // Reduced from 10s
-      lazyContentTimeout: 8000, // Reduced from 15s
-      stabilityTimeout: 5000, // Reduced from 10s
-      stabilityChecks: 2, // Reduced from 3
-      maxRetries: 2, // Reduced from 3
-      apiWaitTimeout: 10000, // Reduced from 20s
+      networkIdleTimeout: 8000,
+      animationTimeout: 5000,
+      lazyContentTimeout: 8000,
+      stabilityTimeout: 5000,
+      stabilityChecks: 2,
+      maxRetries: 2,
+      apiWaitTimeout: 10000,
     });
   }
 
@@ -130,16 +130,13 @@ class ScreenshotService {
   async navigateAndWaitForComplete(page, url) {
     console.log("Starting optimized page navigation and waiting...");
 
-    // Navigate and wait for basic load
     await page.goto(url, {
       waitUntil: "domcontentloaded",
       timeout: this.timeout,
     });
 
-    // Quick initial content check
     await this.waitForInitialContent(page);
 
-    // Network idle with shorter timeout
     try {
       console.log("Waiting for network idle...");
       await page.waitForLoadState("networkidle", {
@@ -150,14 +147,12 @@ class ScreenshotService {
       console.log("Network idle timeout - continuing");
     }
 
-    // Run parallel optimizations
     await Promise.all([
       this.waitForActiveApiRequests(page),
       this.waitForDynamicContent(page),
       this.waitForAnimationsComplete(page),
     ]);
 
-    // Final stability check (simplified)
     await this.waitForPageStability(page);
 
     console.log("Optimized page loading complete");
@@ -319,7 +314,7 @@ class ScreenshotService {
       });
 
       let attempts = 0;
-      const maxAttempts = 8; // Further reduced from 15
+      const maxAttempts = 8;
 
       console.log("Monitoring API requests and loading states...");
       while (attempts < maxAttempts) {
@@ -336,12 +331,12 @@ class ScreenshotService {
           break;
         }
 
-        await page.waitForTimeout(500); // Reduced from 1000ms
+        await page.waitForTimeout(500);
         attempts++;
       }
 
       console.log(`API monitoring completed after ${attempts} attempts`);
-      await page.waitForTimeout(500); // Reduced from 1000ms
+      await page.waitForTimeout(500);
 
       console.log("All API requests completed");
     } catch (error) {
@@ -357,7 +352,7 @@ class ScreenshotService {
           const body = document.body;
           return body && body.children.length > 0;
         },
-        { timeout: 15000 } // Reduced from 30000ms
+        { timeout: 15000 }
       );
       console.log("Initial content loaded");
     } catch (error) {
@@ -386,9 +381,9 @@ class ScreenshotService {
         () => {
           const now = Date.now();
           const timeSinceLastMutation = now - (window.__lastMutation || now);
-          return timeSinceLastMutation > 800; // Reduced from 1500ms
+          return timeSinceLastMutation > 800;
         },
-        { timeout: 10000 } // Reduced from 20000ms
+        { timeout: 10000 }
       );
 
       await page.evaluate(() => {
@@ -411,7 +406,6 @@ class ScreenshotService {
 
       console.log("Quick stability check...");
       for (let i = 0; i < 4; i++) {
-        // Further reduced from 8
         const height = await page.evaluate(() =>
           Math.max(
             document.body.scrollHeight,
@@ -430,10 +424,8 @@ class ScreenshotService {
         }
 
         previousHeight = height;
-        await page.waitForTimeout(300); // Reduced from 500ms
+        await page.waitForTimeout(300);
       }
-
-      // Quick final check for loading indicators
       await page.waitForFunction(
         () =>
           document.readyState === "complete" &&
@@ -451,7 +443,6 @@ class ScreenshotService {
     try {
       console.log("Triggering optimized lazy loading...");
 
-      // Get page dimensions
       const { pageHeight, viewportHeight } = await page.evaluate(() => ({
         pageHeight: Math.max(
           document.body.scrollHeight,
@@ -460,10 +451,8 @@ class ScreenshotService {
         viewportHeight: window.innerHeight,
       }));
 
-      // Reduced scroll steps for efficiency
       const scrollSteps = Math.min(Math.ceil(pageHeight / viewportHeight), 5);
 
-      // Quick scroll with reduced delays
       for (let i = 0; i <= scrollSteps; i++) {
         const scrollPosition = (i / scrollSteps) * pageHeight;
         await page.evaluate((pos) => {
@@ -471,13 +460,11 @@ class ScreenshotService {
           window.dispatchEvent(new Event("scroll"));
         }, scrollPosition);
 
-        await page.waitForTimeout(200); // Reduced from 500ms
+        await page.waitForTimeout(200);
       }
 
-      // Return to top quickly
       await page.evaluate(() => window.scrollTo(0, 0));
 
-      // Trigger lazy images more efficiently
       await page.evaluate(() => {
         const lazyImages = document.querySelectorAll(
           'img[data-src], img[loading="lazy"]'
@@ -488,12 +475,11 @@ class ScreenshotService {
           }
         });
 
-        // Dispatch events
         window.dispatchEvent(new Event("scroll"));
         window.dispatchEvent(new Event("resize"));
       });
 
-      await page.waitForTimeout(800); // Reduced from 2000ms
+      await page.waitForTimeout(800);
 
       console.log("Optimized lazy loading complete");
     } catch (error) {
