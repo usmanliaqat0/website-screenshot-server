@@ -77,23 +77,78 @@ const getHealthStatus = (req, res) => {
 const getApiInfo = (req, res) => {
   res.json({
     name: "Website Screenshot Server",
-    description: "Production-ready API for capturing website screenshots",
+    description:
+      "Production-ready Node.js API for capturing full-page website screenshots using Playwright",
     version: "1.0.0",
+    features: [
+      "Multi-device screenshot capture (mobile, tablet, laptop, desktop)",
+      "Parallel processing for concurrent screenshots",
+      "Full-page screenshot capture with smart content detection",
+      "Rate limiting and security headers",
+      "Request logging and health monitoring",
+      "File management and cleanup utilities",
+      "Comprehensive error handling and validation",
+    ],
     endpoints: {
       "POST /capture": {
-        description: "Capture screenshots of a website",
+        description: "Capture full-page screenshots for specified device types",
         body: {
           url: "string (required) - Website URL to capture",
           devices:
             "array (required) - Device types: mobile, tablet, laptop, desktop",
         },
-        example: { url: "https://example.com", devices: ["mobile", "desktop"] },
+        example: {
+          url: "https://example.com",
+          devices: ["mobile", "desktop"],
+        },
+        response: "Returns screenshot URLs, viewport info, and capture summary",
       },
-      "GET /capture/devices": { description: "List available device presets" },
-      "GET /health": { description: "Server health check" },
+      "GET /capture/devices": {
+        description:
+          "List all available device presets with viewport configurations",
+        response:
+          "Device names, viewport dimensions, scale factors, and mobile flags",
+      },
+      "DELETE /capture/clear": {
+        description: "Delete all screenshot images from uploads directory",
+        response: "Deletion count and success status",
+      },
+      "GET /health": {
+        description: "Server health check with uptime and version information",
+        response: "Status, timestamp, uptime, version, and environment",
+      },
+      "GET /": {
+        description: "API documentation and server information",
+      },
       "GET /uploads/{filename}": {
-        description: "Access captured screenshot files",
+        description:
+          "Direct access to captured screenshot files with caching headers",
       },
+    },
+    devicePresets: {
+      mobile: { width: 375, height: 812, scaleFactor: 2, isMobile: true },
+      tablet: { width: 768, height: 1024, scaleFactor: 2, isMobile: true },
+      laptop: { width: 1366, height: 768, scaleFactor: 1, isMobile: false },
+      desktop: { width: 1920, height: 1080, scaleFactor: 1, isMobile: false },
+    },
+    usage: {
+      basicScreenshot:
+        'POST /capture with {"url": "https://example.com", "devices": ["desktop"]}',
+      multipleDevices: "POST /capture with all device types in devices array",
+      checkDevices: "GET /capture/devices to see all available presets",
+      healthCheck: "GET /health for server status and monitoring",
+      clearImages: "DELETE /capture/clear to remove all screenshots",
+    },
+    rateLimits: {
+      maxRequests: 1000,
+      windowMs: 900000,
+      description: "1000 requests per 15-minute window per IP address",
+    },
+    serverInfo: {
+      port: 3000,
+      environment: "development",
+      browser: "Chromium (Playwright)",
+      uploadPath: "./uploads",
     },
   });
 };

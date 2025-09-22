@@ -1,489 +1,376 @@
-# Website Screenshot Server# Website Screenshot Server
+# Website Screenshot Server
 
-A production-ready Node.js API server for capturing full-page website screenshots using Playwright. Features multiple device presets, concurrent processing, and comprehensive error handling.A production-ready Node.js API server for capturing full-page website screenshots using Playwright. Features multiple device presets, concurrent processing, and comprehensive error handling.
+A production-ready Node.js API server for capturing full-page website screenshots using Playwright. Features multiple device presets, concurrent processing, and comprehensive error handling.
 
-## Features## Features
+## Features
 
-- 🚀 **High Performance**: Single browser instance with connection reuse for optimal performance- 🚀 **High Performance**: Single browser instance with connection reuse for optimal performance
+- 🚀 **High Performance**: Single browser instance with connection reuse for optimal performance
+- 📱 **Multi-Device Support**: Mobile, tablet, laptop, and desktop viewport presets
+- 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging
+- 📸 **Full-Page Screenshots**: Smart content detection and complete page capture
+- ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices
+- 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation
+- 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging
+- 🗑️ **File Management**: Built-in endpoint for clearing uploaded screenshots
+- ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection
 
-- 📱 **Multi-Device Support**: Mobile, tablet, laptop, and desktop viewport presets- 📱 **Multi-Device Support**: Mobile, tablet, laptop, and desktop viewport presets
+## Quick Start
 
-- 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging- 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging
+### Prerequisites
 
-- 📸 **Full-Page Screenshots**: Smart content detection and complete page capture- 📸 **Full-Page Screenshots**: Smart content detection and complete page capture
+- Node.js 18.0.0 or higher
+- npm 8.0.0 or higher
+- Windows, macOS, or Linux
 
-- ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices- ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices
+### Installation
 
-- 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation- 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation
+1. **Install dependencies**
 
-- 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging- 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging
-
-- 🗑️ **File Management**: Built-in endpoint for clearing uploaded screenshots- 🗑️ **File Management**: Built-in endpoint for clearing uploaded screenshots
-
-- ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection- ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection
-
-## Quick Start## Quick Start
-
-### Prerequisites### Prerequisites
-
-- Node.js 18.0.0 or higher- Node.js 18.0.0 or higher
-
-- npm 8.0.0 or higher- npm 8.0.0 or higher
-
-- Windows, macOS, or Linux- Windows, macOS, or Linux
-
-### Installation### Installation
-
-1. **Install dependencies**1. **Install dependencies**
-
-   `bash   `bash
-
-   npm install npm install
-
-   `   `
-
-2. **Start the server**3. **Install browser binaries**
-
-   ````bash
-
-   # Development (with auto-restart)   ```bash
-
-   npm run dev   npm run install-browsers
-
-   ````
-
-   # Production
-
-   npm start4. **Configure environment** (optional)
-
+   ```bash
+   npm install
    ```
+
+2. **Install browser binaries**
+
+   ```bash
+   npm run install-browsers
+   ```
+
+3. **Configure environment** (optional)
 
    The server comes with a `.env` file with default settings. You can modify it if needed.
+
+4. **Start the server**
+
+   ```bash
+   # Development (with auto-restart)
+   npm run dev
+
+   # Production
+   npm start
    ```
 
-The server will start on `http://localhost:3000` and browsers will be automatically installed.
+   The server will start on `http://localhost:3000` by default.
 
-5. **Start the server**
+## API Documentation
 
-## API Endpoints
+### 📸 Capture Screenshots
 
-````bash
+**POST** `/capture`
 
-### 📸 Capture Screenshots   # Development (with auto-restart)
+Capture full-page screenshots for specified device types.
 
-**POST** `/capture`   npm run dev
-
-
-
-Capture full-page screenshots for specified device types.   # Production
-
-npm start
-
-**Request Body:**   ```
+#### Request Body
 
 ```json
-
-{The server will start on `http://localhost:3000` by default.
-
-"url": "https://example.com",
-
-"devices": ["mobile", "tablet", "laptop", "desktop"]## API Documentation
-
+{
+  "url": "https://example.com",
+  "devices": ["mobile", "tablet", "laptop", "desktop"]
 }
-
-```### 📸 Capture Screenshots
-
-
-
-**Response:****POST** `/capture`
-
-```json
-
-{Capture full-page screenshots for specified device types.
-
-"success": true,
-
-"url": "https://example.com",#### Request Body
-
-"timestamp": "2024-01-15T10:30:00.000Z",
-
-"summary": {```json
-
- "total": 2,{
-
- "successful": 2,  "url": "https://example.com",
-
- "failed": 0  "devices": ["mobile", "tablet", "laptop", "desktop"]
-
-},}
-
-"screenshots": [```
-
- {
-
-   "device": "mobile",#### Response
-
-   "url": "http://localhost:3000/uploads/1705315800000_mobile_abc123.png",
-
-   "viewport": { "width": 375, "height": 812 }```json
-
- }{
-
-]  "success": true,
-
-}  "url": "https://example.com",
-
-```  "timestamp": "2024-01-15T10:30:00.000Z",
-
-"summary": {
-
-### 📱 Get Available Devices    "total": 2,
-
-**GET** `/capture/devices`    "successful": 2,
-
- "failed": 0
-
-List all available device presets and their configurations.  },
-
-"screenshots": [
-
-### 🗑️ Clear All Images    {
-
-**DELETE** `/capture/clear`      "device": "mobile",
-
-   "url": "http://localhost:3000/uploads/1705315800000_mobile_abc123.png",
-
-Delete all screenshot images from the uploads directory.      "viewport": {
-
-     "width": 375,
-
-**Response:**        "height": 812
-
-```json      }
-
-{    },
-
-"success": true,    {
-
-"message": "Successfully deleted 5 images",      "device": "desktop",
-
-"deletedCount": 5      "url": "http://localhost:3000/uploads/1705315800000_desktop_def456.png",
-
-}      "viewport": {
-
-```        "width": 1920,
-
-     "height": 1080
-
-### 🏥 Health Check      }
-
-**GET** `/health`    }
-
-]
-
-Server health and status information with uptime and version.}
-
-````
-
-### 📄 API Information
-
-**GET** `/`### 📱 Available Devices
-
-Get complete API documentation and endpoint information.**GET** `/capture/devices`
-
-### 🖼️ Access ScreenshotsList all available device presets and their configurations.
-
-**GET** `/uploads/{filename}`
+```
 
 #### Response
 
-Direct access to captured screenshot files with proper caching headers.
+```json
+{
+  "success": true,
+  "url": "https://example.com",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "summary": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0
+  },
+  "screenshots": [
+    {
+      "device": "mobile",
+      "url": "http://localhost:3000/uploads/1705315800000_mobile_abc123.png",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      }
+    },
+    {
+      "device": "desktop",
+      "url": "http://localhost:3000/uploads/1705315800000_desktop_def456.png",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    }
+  ]
+}
+```
+
+### 📱 Available Devices
+
+**GET** `/capture/devices`
+
+List all available device presets and their configurations.
+
+#### Response
 
 ```json
-
-## Device Presets{
-
+{
   "success": true,
-
-| Device  | Resolution  | Scale | Mobile | Touch |  "devices": [
-
-| ------- | ----------- | ----- | ------ | ----- |    {
-
-| mobile  | 375 × 812   | 2x    | ✅     | ✅    |      "name": "mobile",
-
-| tablet  | 768 × 1024  | 2x    | ✅     | ✅    |      "viewport": { "width": 375, "height": 812 },
-
-| laptop  | 1366 × 768  | 1x    | ❌     | ❌    |      "deviceScaleFactor": 2,
-
-| desktop | 1920 × 1080 | 1x    | ❌     | ❌    |      "isMobile": true
-
+  "devices": [
+    {
+      "name": "mobile",
+      "viewport": { "width": 375, "height": 812 },
+      "deviceScaleFactor": 2,
+      "isMobile": true
+    },
+    {
+      "name": "tablet",
+      "viewport": { "width": 768, "height": 1024 },
+      "deviceScaleFactor": 2,
+      "isMobile": true
+    },
+    {
+      "name": "laptop",
+      "viewport": { "width": 1366, "height": 768 },
+      "deviceScaleFactor": 1,
+      "isMobile": false
+    },
+    {
+      "name": "desktop",
+      "viewport": { "width": 1920, "height": 1080 },
+      "deviceScaleFactor": 1,
+      "isMobile": false
     }
-
-## Configuration  ],
-
+  ],
   "total": 4
-
-The server uses hardcoded configuration optimized for production:}
-
+}
 ```
 
-- **Port**: 3000
+### 🗑️ Clear All Images
 
-- **Rate Limiting**: 1000 requests per 15 minutes per IP### 🏥 Health Check
+**DELETE** `/capture/clear`
 
-- **Request Timeout**: 60 seconds
+Delete all screenshot images from the uploads directory.
 
-- **Body Size Limit**: 50MB**GET** `/health`
+#### Response
 
-- **CORS**: Enabled for all origins
+```json
+{
+  "success": true,
+  "message": "Successfully deleted 5 images",
+  "deletedCount": 5
+}
+```
 
-- **Security Headers**: Comprehensive CSP and security policiesServer health and status information.
+### 🏥 Health Check
 
-## Usage Examples### 🖼️ Access Screenshots
+**GET** `/health`
 
-### Basic Screenshot**GET** `/uploads/{filename}.png`
+Server health and status information with uptime and version.
+
+#### Response
+
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "uptime": 3600.5,
+  "version": "1.0.0",
+  "environment": "development"
+}
+```
+
+### 📄 API Information
+
+**GET** `/`
+
+Get complete API documentation and endpoint information.
+
+### 🖼️ Access Screenshots
+
+**GET** `/uploads/{filename}`
+
+Direct access to captured screenshot files with proper caching headers.
+
+## Device Presets
+
+| Device  | Width × Height | Scale Factor | Mobile | Touch |
+|---------|----------------|--------------|--------|-------|
+| Mobile  | 375 × 812      | 2×           | ✓      | ✓     |
+| Tablet  | 768 × 1024     | 2×           | ✓      | ✓     |
+| Laptop  | 1366 × 768     | 1×           | ✗      | ✗     |
+| Desktop | 1920 × 1080    | 1×           | ✗      | ✗     |
+
+## Usage Examples
+
+### Basic Screenshot
 
 ```bash
-
-curl -X POST http://localhost:3000/capture \Direct access to captured screenshot files.
-
-  -H "Content-Type: application/json" \
-
-  -d '{"url": "https://github.com", "devices": ["desktop"]}'## Device Presets
-
-```
-
-| Device | Resolution | Scale | Mobile | Touch |
-
-### Multiple Devices| ------- | ----------- | ----- | ------ | ----- |
-
-```bash| mobile  | 375 × 812   | 2x    | ✅     | ✅    |
-
-curl -X POST http://localhost:3000/capture \| tablet  | 768 × 1024  | 2x    | ✅     | ✅    |
-
-  -H "Content-Type: application/json" \| laptop  | 1366 × 768  | 1x    | ❌     | ❌    |
-
-  -d '{"url": "https://example.com", "devices": ["mobile", "tablet"]}'| desktop | 1920 × 1080 | 1x    | ❌     | ❌    |
-
-```
-
-## Configuration
-
-### Clear All Images
-
-```bashEnvironment variables can be configured in a `.env` file:
-
-curl -X DELETE http://localhost:3000/capture/clear
-
-```````bash
-
-# Server Configuration
-
-### Check HealthPORT=3000
-
-```bash
-
-curl http://localhost:3000/health# Storage Configuration
-
-```UPLOADS_PATH=./uploads
-
-
-
-## Architecture# Screenshot Configuration
-
-SCREENSHOT_TIMEOUT=30000
-
-```
-
-├── app.js                     # Main server application# Rate Limiting
-
-├── package.json              # Dependencies and scriptsRATE_LIMIT_WINDOW_MS=900000
-
-├── src/RATE_LIMIT_MAX_REQUESTS=100
-
-│   ├── browserManager.js     # Browser instance management
-
-│   ├── config.js             # Device presets configuration# Environment
-
-│   ├── screenshotService.js  # Core screenshot logicNODE_ENV=production
-
-│   ├── middleware/```
-
-│   │   ├── errorHandler.js   # Error handling & logging
-
-│   │   └── static.js         # Static file serving## Usage Examples
-
-│   └── routes/
-
-│       └── capture.js        # API route handlers### Basic Screenshot
-
-└── uploads/                  # Screenshot storage directory
-
-``````bash
-
 curl -X POST http://localhost:3000/capture \
-
-## Security Features  -H "Content-Type: application/json" \
-
+  -H "Content-Type: application/json" \
   -d '{"url": "https://github.com", "devices": ["desktop"]}'
+```
 
-- **Helmet.js**: Comprehensive security headers including CSP```
+### Multiple Devices
 
-- **Rate Limiting**: 1000 requests per 15-minute window per IP
-
-- **CORS**: Configurable cross-origin resource sharing### Multiple Devices
-
-- **Input Validation**: URL and parameter sanitization
-
-- **Request Logging**: Unique request IDs for audit trails```bash
-
-- **Graceful Shutdown**: Clean browser and server cleanupcurl -X POST http://localhost:3000/capture \
-
-- **Error Handling**: Secure error responses without internal details  -H "Content-Type: application/json" \
-
+```bash
+curl -X POST http://localhost:3000/capture \
+  -H "Content-Type: application/json" \
   -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"]}'
+```
 
-## Performance Features```
+### Check Available Devices
 
+```bash
+curl http://localhost:3000/capture/devices
+```
 
+### Clear All Screenshots
 
-- **Browser Reuse**: Single Chromium instance for all requests### Check Available Devices
+```bash
+curl -X DELETE http://localhost:3000/capture/clear
+```
 
+### Health Check
+
+```bash
+curl http://localhost:3000/health
+```
+
+## Project Structure
+
+```
+website-screenshot-server/
+├── app.js                    # Main server application
+├── package.json              # Dependencies and scripts
+├── src/
+│   ├── browserManager.js     # Browser instance management
+│   ├── config.js             # Device presets configuration
+│   ├── screenshotService.js  # Core screenshot logic
+│   ├── middleware/
+│   │   ├── errorHandler.js   # Error handling & logging
+│   │   └── static.js         # Static file serving
+│   └── routes/
+│       └── capture.js        # API route handlers
+└── uploads/                  # Screenshot storage directory
+```
+
+## Security Features
+
+- **Helmet.js**: Comprehensive security headers including CSP
+- **Rate Limiting**: 1000 requests per 15-minute window per IP
+- **CORS**: Configurable cross-origin resource sharing
+- **Input Validation**: URL and parameter sanitization
+- **Request Logging**: Unique request IDs for audit trails
+- **Graceful Shutdown**: Clean browser and server cleanup
+- **Error Handling**: Secure error responses without internal details
+
+## Performance Features
+
+- **Browser Reuse**: Single Chromium instance for all requests
 - **Parallel Processing**: Concurrent screenshot capture across devices
-
-- **Network Optimization**: Smart wait strategies for content loading```bash
-
-- **Memory Management**: Automatic context cleanup after requestscurl http://localhost:3000/capture/devices
-
-- **File Caching**: Proper cache headers for uploaded images```
-
+- **Network Optimization**: Smart wait strategies for content loading
+- **Memory Management**: Automatic context cleanup after requests
+- **File Caching**: Proper cache headers for uploaded images
 - **Request Deduplication**: Removes duplicate devices from requests
 
-## Production Deployment
-
 ## Error Handling
-
-### Docker (Recommended)
 
 Comprehensive error responses with appropriate HTTP status codes:
 
-```dockerfile
+- **400**: Bad Request (validation errors, invalid URLs)
+- **408**: Request Timeout (screenshot capture timeout)
+- **429**: Too Many Requests (rate limit exceeded)
+- **500**: Internal Server Error (capture failures)
+- **503**: Service Unavailable (browser issues)
 
-- **400**: Bad Request (validation errors, invalid URLs)FROM node:18-alpine
+Example error response:
 
-- **408**: Request Timeout (screenshot capture timeout)WORKDIR /app
+```json
+{
+  "success": false,
+  "error": "Invalid devices: mobile2, tablet2",
+  "code": "INVALID_DEVICES",
+  "invalidDevices": ["mobile2", "tablet2"],
+  "validDevices": ["mobile", "tablet", "laptop", "desktop"]
+}
+```
 
-- **429**: Too Many Requests (rate limit exceeded)COPY package*.json ./
+## Scripts
 
-- **500**: Internal Server Error (capture failures)RUN npm ci --only=production
-
-- **503**: Service Unavailable (browser issues)RUN npx playwright install chromium
-
-COPY . .
-
-## ScriptsEXPOSE 3000
-
-CMD ["npm", "start"]
-
-- `npm start` - Start production server```
-
+- `npm start` - Start production server
 - `npm run dev` - Start with auto-restart on changes
-
-- `npm run install-browsers` - Install Playwright browsers### PM2 Process Manager
-
+- `npm run install-browsers` - Install Playwright browsers
 - `npm run health` - Quick health check via curl
+- `npm run clean` - Remove all PNG files from uploads
 
-- `npm run clean` - Remove all PNG files from uploads```bash
+## Environment Configuration
 
+Create or modify the `.env` file for custom settings:
+
+```bash
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=1000
+
+# Screenshot Settings
+SCREENSHOT_TIMEOUT=30000
+UPLOADS_PATH=./uploads
+```
+
+## Production Deployment
+
+### Docker (Recommended)
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+RUN npx playwright install chromium
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+### PM2 Process Manager
+
+```bash
 npm install -g pm2
-
-## Dependenciespm2 start app.js --name screenshot-server
-
+pm2 start app.js --name screenshot-server
 pm2 save
+pm2 startup
+```
 
-**Core:**pm2 startup
+### Environment Variables for Production
 
-- **Express.js** - Web framework```
-
-- **Playwright** - Browser automation
-
-- **Helmet** - Security headers### Environment Variables for Production
-
-- **CORS** - Cross-origin support
-
-- **express-rate-limit** - Rate limiting```bash
-
+```bash
 NODE_ENV=production
-
-## System RequirementsPORT=3000
-
+PORT=3000
 UPLOADS_PATH=/app/uploads
+SCREENSHOT_TIMEOUT=30000
+RATE_LIMIT_MAX_REQUESTS=100
+```
 
-- **Node.js**: 18.0.0 or higherSCREENSHOT_TIMEOUT=30000
+## System Requirements
 
-- **RAM**: Minimum 1GB, recommended 2GB+RATE_LIMIT_MAX_REQUESTS=100
-
-- **Storage**: ~500MB for browser binaries + screenshot storage```
-
+- **Node.js**: 18.0.0 or higher
+- **RAM**: Minimum 1GB, recommended 2GB+
+- **Storage**: ~500MB for browser binaries + screenshot storage
 - **OS**: Windows, macOS, or Linux
 
-## Error Handling
+## Dependencies
+
+**Core:**
+- **Express.js** - Web framework
+- **Playwright** - Browser automation
+- **Helmet** - Security headers
+- **CORS** - Cross-origin support
+- **express-rate-limit** - Rate limiting
 
 ## Troubleshooting
 
-The API provides comprehensive error handling with appropriate HTTP status codes:
-
-### Browser Issues
-
-```bash- `400` - Bad Request (invalid URL, missing parameters)
-
-# Reinstall browsers- `408` - Request Timeout
-
-npm run install-browsers- `429` - Too Many Requests (rate limit)
-
-- `500` - Internal Server Error
-
-# Check browser status- `503` - Service Unavailable (browser issues)
-
-npx playwright install --dry-run chromium
-
-```## Performance & Scaling
-
-
-
-### Performance Issues- **Browser Reuse**: Single browser instance handles all requests
-
-- Monitor memory usage with `htop` or Task Manager- **Concurrent Processing**: Screenshots taken in parallel
-
-- Check `uploads/` directory disk usage- **Memory Management**: Automatic context cleanup after each request
-
-- Review rate limiting configuration- **Rate Limiting**: Configurable request limits per IP
-
-- **Caching**: Static file caching with proper headers
-
-### Permission Issues
-
-- Ensure `uploads/` directory is writable## Security Features
-
-- Verify Node.js has necessary system permissions
-
-- Check firewall settings for port 3000- **Input Validation**: URL and parameter validation
-
-- **Rate Limiting**: Prevents abuse and DoS attacks
-
-## License- **Security Headers**: Helmet.js with CSP policies
-
-- **File Access Control**: Restricted file serving
-
-MIT License- **Request Logging**: Full audit trail
-
-- **Graceful Shutdown**: Clean resource cleanup
-
----
-
-## Troubleshooting
-
-**API Documentation**: Visit `http://localhost:3000` for interactive endpoint documentation.
 ### Browser Installation Issues
 
 ```bash
@@ -506,6 +393,12 @@ npx playwright install --dry-run chromium
 - Check file system permissions
 - Verify browser can access system resources
 
+### Performance Issues
+
+- Monitor memory usage with `htop` or Task Manager
+- Check `uploads/` directory disk usage
+- Review rate limiting configuration
+
 ## License
 
 MIT License - See LICENSE file for details.
@@ -520,5 +413,6 @@ MIT License - See LICENSE file for details.
 
 ---
 
+**API Documentation**: Visit `http://localhost:3000` for interactive endpoint documentation.
+
 **Need help?** Check the health endpoint at `/health` or review the logs for detailed error information.
-```````
