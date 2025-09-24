@@ -96,6 +96,32 @@ const validateSectionCaptureRequest = (req, res, next) => {
     });
   }
 
+  // Check if it's a space-separated class string (common mistake)
+  if (
+    trimmedSelector.includes(" ") &&
+    !trimmedSelector.startsWith(".") &&
+    !trimmedSelector.startsWith("#") &&
+    !trimmedSelector.startsWith("[")
+  ) {
+    return res.status(400).json({
+      error:
+        "Invalid selector format. Space-separated classes need to be chained with dots",
+      code: "INVALID_SELECTOR",
+      message: `You provided: "${trimmedSelector}"`,
+      suggestion: `Try: ".${trimmedSelector.split(" ").join(".")}"`,
+      examples: [
+        "div",
+        ".class-name",
+        "#element-id",
+        "section.hero",
+        "header#main-header",
+        ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded",
+        ".class1.class2.class3",
+        "[data-id='bb4cf52']",
+      ],
+    });
+  }
+
   // More permissive pattern that handles complex class combinations
   const selectorPattern =
     /^[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*(\s+[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*)*$/;
@@ -110,8 +136,9 @@ const validateSectionCaptureRequest = (req, res, next) => {
         "#element-id",
         "section.hero",
         "header#main-header",
-        ".elementor-element.elementor-element-bb4cf52",
+        ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded",
         ".class1.class2.class3",
+        "[data-id='bb4cf52']",
       ],
     });
   }

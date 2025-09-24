@@ -124,8 +124,30 @@ Capture screenshots of specific page sections/elements for specified device type
 - **Class**: `".hero-section"`, `".main-content"`, `".navigation"`
 - **ID**: `"#banner"`, `"#navigation"`, `"#footer"`
 - **Complex**: `"section.hero"`, `"header#main-header"`, `"div.content-wrapper"`
-- **Multiple Classes**: `".elementor-element.elementor-element-bb4cf52"`, `".class1.class2.class3"`
-- **Full Class String**: `"elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"`
+- **Multiple Classes (Chained)**: `".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"`
+- **Data Attributes**: `"[data-id='bb4cf52']"`, `"[data-element_type='container']"`
+
+#### ⚠️ Important: Class Selector Format
+
+When copying class names from HTML, you need to format them correctly:
+
+**❌ Wrong (space-separated):**
+
+```json
+"selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"
+```
+
+**✅ Correct (chained with dots):**
+
+```json
+"selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"
+```
+
+**✅ Alternative (data attribute - more reliable):**
+
+```json
+"selector": "[data-id='bb4cf52']"
+```
 
 #### Response
 
@@ -337,12 +359,20 @@ curl -X POST http://localhost:3000/capture/section \
   -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".elementor-element.elementor-element-bb4cf52"}'
 ```
 
-#### Full Class String
+#### Full Class String (Chained)
 
 ```bash
 curl -X POST http://localhost:3000/capture/section \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"}'
+  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"}'
+```
+
+#### Data Attribute Selector (Recommended)
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": "[data-id=\'bb4cf52\']"}'
 ```
 
 ### Check Available Devices
