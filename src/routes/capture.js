@@ -122,13 +122,17 @@ const validateSectionCaptureRequest = (req, res, next) => {
     });
   }
 
-  // More permissive pattern that handles complex class combinations
-  const selectorPattern =
-    /^[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*(\s+[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*)*$/;
+  // Very permissive validation - just check for basic safety
+  // Let Puppeteer handle the actual CSS selector validation
+  const hasUnsafeChars = /[<>]/;
+  const hasScriptInjection = /javascript:|data:/i;
 
-  if (!selectorPattern.test(trimmedSelector)) {
+  if (
+    hasUnsafeChars.test(trimmedSelector) ||
+    hasScriptInjection.test(trimmedSelector)
+  ) {
     return res.status(400).json({
-      error: "Invalid selector format. Must be a valid CSS selector",
+      error: "Invalid selector: contains potentially unsafe characters",
       code: "INVALID_SELECTOR",
       examples: [
         "div",
@@ -139,6 +143,7 @@ const validateSectionCaptureRequest = (req, res, next) => {
         ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded",
         ".class1.class2.class3",
         "[data-id='bb4cf52']",
+        "[data-element_type='container']",
       ],
     });
   }
