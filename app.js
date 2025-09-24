@@ -82,6 +82,7 @@ const getApiInfo = (req, res) => {
     version: "1.0.0",
     features: [
       "Multi-device screenshot capture (mobile, tablet, laptop, desktop)",
+      "Section screenshot capture with CSS selectors",
       "Parallel processing for concurrent screenshots",
       "Full-page screenshot capture with smart content detection",
       "Rate limiting and security headers",
@@ -97,11 +98,23 @@ const getApiInfo = (req, res) => {
           devices:
             "array (required) - Device types: mobile, tablet, laptop, desktop",
         },
+        example: { url: "https://example.com", devices: ["mobile", "desktop"] },
+        response: "Returns screenshot URLs, viewport info, and capture summary",
+      },
+      "POST /capture/section": {
+        description: "Capture screenshots of specific page sections/elements",
+        body: {
+          url: "string (required) - Website URL to capture",
+          devices: "array (required) - Device types",
+          selector: "string (required) - CSS selector for target element",
+        },
         example: {
           url: "https://example.com",
           devices: ["mobile", "desktop"],
+          selector: ".hero-section",
         },
-        response: "Returns screenshot URLs, viewport info, and capture summary",
+        response:
+          "Returns section screenshot URLs, element bounds, and capture summary",
       },
       "GET /capture/devices": {
         description:
@@ -134,6 +147,8 @@ const getApiInfo = (req, res) => {
     usage: {
       basicScreenshot:
         'POST /capture with {"url": "https://example.com", "devices": ["desktop"]}',
+      sectionScreenshot:
+        'POST /capture/section with {"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".hero-section"}',
       multipleDevices: "POST /capture with all device types in devices array",
       checkDevices: "GET /capture/devices to see all available presets",
       healthCheck: "GET /health for server status and monitoring",

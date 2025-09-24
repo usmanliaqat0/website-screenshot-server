@@ -37,10 +37,7 @@ const VALIDATION_ERRORS = Object.freeze({
 const validateCaptureRequest = (req, res, next) => {
   const { url, devices } = req.body;
 
-  if (!url) {
-    return res.status(400).json(VALIDATION_ERRORS.MISSING_URL);
-  }
-
+  if (!url) return res.status(400).json(VALIDATION_ERRORS.MISSING_URL);
   if (!devices || !Array.isArray(devices) || devices.length === 0) {
     return res.status(400).json(VALIDATION_ERRORS.MISSING_DEVICES);
   }
@@ -48,7 +45,6 @@ const validateCaptureRequest = (req, res, next) => {
   const invalidDevices = devices.filter(
     (device) => !VALID_DEVICES.includes(device)
   );
-
   if (invalidDevices.length > 0) {
     return res.status(400).json({
       error: `Invalid devices: ${invalidDevices.join(", ")}`,
@@ -73,10 +69,8 @@ const validateSectionCaptureRequest = (req, res, next) => {
     return res.status(400).json(VALIDATION_ERRORS.MISSING_SELECTOR);
   }
 
-  // Enhanced CSS selector validation - more permissive for complex selectors
   const trimmedSelector = selector.trim();
 
-  // Check for basic safety - no script injection attempts
   if (
     trimmedSelector.includes("<") ||
     trimmedSelector.includes(">") ||
@@ -96,7 +90,6 @@ const validateSectionCaptureRequest = (req, res, next) => {
     });
   }
 
-  // Check if it's a space-separated class string (common mistake)
   if (
     trimmedSelector.includes(" ") &&
     !trimmedSelector.startsWith(".") &&
@@ -122,8 +115,6 @@ const validateSectionCaptureRequest = (req, res, next) => {
     });
   }
 
-  // Very permissive validation - just check for basic safety
-  // Let Puppeteer handle the actual CSS selector validation
   const hasUnsafeChars = /[<>]/;
   const hasScriptInjection = /javascript:|data:/i;
 
@@ -148,18 +139,18 @@ const validateSectionCaptureRequest = (req, res, next) => {
     });
   }
 
-  if (!devices || !Array.isArray(devices) || devices.length === 0) {
-    return res.status(400).json(VALIDATION_ERRORS.INVALID_DEVICE_COUNT);
-  }
-
-  if (devices.length > VALID_DEVICES.length) {
+  if (
+    !devices ||
+    !Array.isArray(devices) ||
+    devices.length === 0 ||
+    devices.length > VALID_DEVICES.length
+  ) {
     return res.status(400).json(VALIDATION_ERRORS.INVALID_DEVICE_COUNT);
   }
 
   const invalidDevices = devices.filter(
     (device) => !VALID_DEVICES.includes(device)
   );
-
   if (invalidDevices.length > 0) {
     return res.status(400).json({
       error: `Invalid devices: ${invalidDevices.join(", ")}`,
@@ -170,7 +161,7 @@ const validateSectionCaptureRequest = (req, res, next) => {
   }
 
   req.body.devices = [...new Set(devices)];
-  req.body.selector = selector.trim();
+  req.body.selector = trimmedSelector;
   next();
 };
 
@@ -188,6 +179,10 @@ const createSuccessResponse = (result) => {
       device: screenshot.device,
       url: screenshot.url,
       viewport: screenshot.viewport,
+      ...(screenshot.selector && { selector: screenshot.selector }),
+      ...(screenshot.elementBounds && {
+        elementBounds: screenshot.elementBounds,
+      }),
     })),
   };
 
@@ -196,6 +191,10 @@ const createSuccessResponse = (result) => {
       device: error.device,
       message: error.error,
     }));
+  }
+
+  if (result.selector) {
+    response.selector = result.selector;
   }
 
   return response;
@@ -225,7 +224,6 @@ const captureScreenshots = async (req, res) => {
       screenshotService.captureMultiple(url, devices),
       watchdog,
     ]);
-
     const response = createSuccessResponse(result);
     const statusCode = result.successful > 0 ? 200 : 500;
 
@@ -272,7 +270,6 @@ const captureSectionScreenshots = async (req, res) => {
       screenshotService.captureMultipleSections(url, devices, selector),
       watchdog,
     ]);
-
     const response = createSuccessResponse(result);
     const statusCode = result.successful > 0 ? 200 : 500;
 

@@ -15,9 +15,10 @@ class ScreenshotService {
       options.fastMode ?? (envFastMode === "1" || envFastMode === "true")
     );
 
-    const defaultPageTimeout = this.fastMode ? 15000 : 30000;
-    this.timeout = parseMs(process.env.PAGE_TIMEOUT_MS, defaultPageTimeout);
-
+    this.timeout = parseMs(
+      process.env.PAGE_TIMEOUT_MS,
+      this.fastMode ? 15000 : 30000
+    );
     this.uploadsDir = path.join(process.cwd(), "uploads");
     this.baseUrl = baseUrl;
 
@@ -171,14 +172,9 @@ class ScreenshotService {
       console.log(`Triggering lazy loading for ${device}...`);
       await this.triggerLazyLoading(page);
 
-      // Wait for the element to be present and visible
       console.log(`Waiting for element with selector: ${selector}`);
-      await page.waitForSelector(selector, {
-        visible: true,
-        timeout: 10000,
-      });
+      await page.waitForSelector(selector, { visible: true, timeout: 10000 });
 
-      // Get element bounding box
       const element = await page.$(selector);
       if (!element) {
         throw new Error(`Element not found with selector: ${selector}`);
@@ -198,7 +194,6 @@ class ScreenshotService {
 
       console.log(`Capturing section screenshot for ${device}...`);
 
-      // Capture screenshot of the specific element
       await element.screenshot({
         path: filepath,
         type: "png",
