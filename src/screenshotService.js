@@ -9,13 +9,13 @@ class ScreenshotService {
     this.uploadsDir = path.join(process.cwd(), "uploads");
     this.baseUrl = baseUrl;
     this.waitConfig = Object.freeze({
-      networkIdleTimeout: 8000,
+      networkIdleTimeout: 12000,
       animationTimeout: 5000,
-      lazyContentTimeout: 8000,
-      stabilityTimeout: 5000,
+      lazyContentTimeout: 12000,
+      stabilityTimeout: 8000,
       stabilityChecks: 2,
       maxRetries: 2,
-      apiWaitTimeout: 10000,
+      apiWaitTimeout: 12000,
     });
   }
 
@@ -131,7 +131,7 @@ class ScreenshotService {
     console.log("Starting optimized page navigation and waiting...");
 
     await page.goto(url, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "load",
       timeout: this.timeout,
     });
 
@@ -146,6 +146,11 @@ class ScreenshotService {
     } catch (error) {
       console.log("Network idle timeout - continuing");
     }
+
+    // Ensure fonts are loaded
+    await this.waitForFonts(page);
+    // Ensure all images are fully loaded
+    await this.waitForAllImages(page);
 
     await Promise.all([
       this.waitForActiveApiRequests(page),
@@ -207,6 +212,41 @@ class ScreenshotService {
       console.log("Animations completed");
     } catch (error) {
       console.log("Animation timeout - proceeding");
+    }
+  }
+
+  async waitForFonts(page) {
+    try {
+      console.log("Waiting for fonts to be ready...");
+      await page.evaluate(async () => {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      });
+      console.log("Fonts ready");
+    } catch (error) {
+      console.log("Font readiness timeout - proceeding");
+    }
+  }
+
+  async waitForAllImages(page) {
+    try {
+      console.log("Ensuring all images are loaded...");
+      await page.evaluate(async () => {
+        const loadImage = (img) =>
+          new Promise((resolve) => {
+            if (img.complete && img.naturalWidth > 0) return resolve(true);
+            const done = () => resolve(true);
+            img.addEventListener("load", done, { once: true });
+            img.addEventListener("error", done, { once: true });
+          });
+
+        const images = Array.from(document.images || []);
+        await Promise.all(images.map(loadImage));
+      });
+      console.log("All images loaded");
+    } catch (error) {
+      console.log("Image load wait timeout - proceeding");
     }
   }
 
@@ -442,6 +482,50 @@ class ScreenshotService {
   async triggerLazyLoading(page) {
     try {
       console.log("Triggering optimized lazy loading...");
+      // Force eager loading for images/pictures and trigger scrolling
+      await page.evaluate(() => {
+        const setEager = (img) => {
+          try {
+            img.loading = "eager";
+            if (img.hasAttribute("data-src") && !img.src) {
+              img.src = img.getAttribute("data-src");
+            }
+            if (img.hasAttribute("data-srcset") && !img.srcset) {
+              img.srcset = img.getAttribute("data-srcset");
+            }
+          } catch {}
+        };
+
+        document.querySelectorAll("img").forEach(setEager);
+        document.querySelectorAll("picture source").forEach((s) => {
+          if (s.hasAttribute("data-srcset") && !s.srcset) {
+            s.srcset = s.getAttribute("data-srcset");
+          }
+        });
+
+        // Disable IntersectionObservers that gate lazy content
+        const OriginalIO = window.IntersectionObserver;
+        if (OriginalIO && !window.__ioPatched) {
+          window.__ioPatched = true;
+          window.IntersectionObserver = function (cb, options) {
+            const fake = new OriginalIO(cb, options);
+            setTimeout(() => {
+              try {
+                cb(
+                  [
+                    {
+                      isIntersecting: true,
+                      intersectionRatio: 1,
+                    },
+                  ],
+                  fake
+                );
+              } catch {}
+            }, 0);
+            return fake;
+          };
+        }
+      });
 
       const { pageHeight, viewportHeight } = await page.evaluate(() => ({
         pageHeight: Math.max(
@@ -451,35 +535,34 @@ class ScreenshotService {
         viewportHeight: window.innerHeight,
       }));
 
-      const scrollSteps = Math.min(Math.ceil(pageHeight / viewportHeight), 5);
+      const scrollSteps = Math.min(
+        Math.ceil(pageHeight / viewportHeight) + 2,
+        8
+      );
 
       for (let i = 0; i <= scrollSteps; i++) {
-        const scrollPosition = (i / scrollSteps) * pageHeight;
+        const scrollPosition = Math.min(
+          (i / scrollSteps) * (pageHeight - viewportHeight),
+          pageHeight
+        );
         await page.evaluate((pos) => {
           window.scrollTo(0, pos);
           window.dispatchEvent(new Event("scroll"));
         }, scrollPosition);
-
-        await page.waitForTimeout(200);
+        await page.waitForTimeout(250);
       }
 
       await page.evaluate(() => window.scrollTo(0, 0));
 
+      // A final nudge
       await page.evaluate(() => {
-        const lazyImages = document.querySelectorAll(
-          'img[data-src], img[loading="lazy"]'
-        );
-        lazyImages.forEach((img) => {
-          if (img.dataset.src && !img.src) {
-            img.src = img.dataset.src;
-          }
-        });
-
         window.dispatchEvent(new Event("scroll"));
         window.dispatchEvent(new Event("resize"));
       });
 
-      await page.waitForTimeout(800);
+      // Wait a bit and ensure images are loaded
+      await page.waitForTimeout(1000);
+      await this.waitForAllImages(page);
 
       console.log("Optimized lazy loading complete");
     } catch (error) {
