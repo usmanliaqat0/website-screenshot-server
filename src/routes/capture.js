@@ -69,27 +69,46 @@ const createSuccessResponse = (result) => {
 };
 
 const captureScreenshots = async (req, res) => {
-  const { url, devices } = req.body;
+  const { url, devices, fastMode } = req.body;
   const baseUrl = `${req.protocol}://${req.get("host")}`;
-  const screenshotService = new ScreenshotService(baseUrl);
+  const screenshotService = new ScreenshotService(baseUrl, {
+    fastMode: Boolean(fastMode),
+  });
 
   try {
     console.log(
       `Screenshot request: ${url} for devices: ${devices.join(", ")}`
     );
-    const result = await screenshotService.captureMultiple(url, devices);
+    const watchdogMs = Number(process.env.CAPTURE_WATCHDOG_MS || 60000);
+
+    const watchdog = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`CAPTURE_WATCHDOG_TIMEOUT_${watchdogMs}`)),
+        watchdogMs
+      )
+    );
+
+    const result = await Promise.race([
+      screenshotService.captureMultiple(url, devices),
+      watchdog,
+    ]);
 
     const response = createSuccessResponse(result);
     const statusCode = result.successful > 0 ? 200 : 500;
 
     res.status(statusCode).json(response);
   } catch (error) {
+    const message = String(error?.message || "");
+    const isWatchdog = message.startsWith("CAPTURE_WATCHDOG_TIMEOUT_");
+    const code = isWatchdog ? "CAPTURE_TIMEOUT" : "CAPTURE_ERROR";
+    const status = isWatchdog ? 504 : 500;
+
     console.error("Screenshot capture error:", error);
-    res.status(500).json({
+    res.status(status).json({
       success: false,
-      error: "Screenshot capture failed",
-      message: error.message,
-      code: "CAPTURE_ERROR",
+      error: isWatchdog ? "Capture timed out" : "Screenshot capture failed",
+      message: isWatchdog ? "Global watchdog exceeded" : error.message,
+      code,
     });
   }
 };

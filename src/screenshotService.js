@@ -4,18 +4,58 @@ const browserManager = require("./browserManager");
 const { DEVICE_PRESETS } = require("./config");
 
 class ScreenshotService {
-  constructor(baseUrl = null) {
-    this.timeout = 60000;
+  constructor(baseUrl = null, options = {}) {
+    const parseMs = (val, fallback) => {
+      const n = Number(val);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+
+    const envFastMode = String(process.env.FAST_MODE || "").toLowerCase();
+    this.fastMode = Boolean(
+      options.fastMode ?? (envFastMode === "1" || envFastMode === "true")
+    );
+
+    const defaultPageTimeout = this.fastMode ? 15000 : 30000;
+    this.timeout = parseMs(process.env.PAGE_TIMEOUT_MS, defaultPageTimeout);
+
     this.uploadsDir = path.join(process.cwd(), "uploads");
     this.baseUrl = baseUrl;
+
+    const baseWaits = {
+      networkIdleTimeout: this.fastMode ? 1500 : 12000,
+      animationTimeout: this.fastMode ? 1000 : 5000,
+      lazyContentTimeout: this.fastMode ? 1500 : 12000,
+      stabilityTimeout: this.fastMode ? 1000 : 8000,
+      stabilityChecks: this.fastMode ? 1 : 2,
+      maxRetries: this.fastMode ? 1 : 2,
+      apiWaitTimeout: this.fastMode ? 1500 : 12000,
+    };
+
     this.waitConfig = Object.freeze({
-      networkIdleTimeout: 12000,
-      animationTimeout: 5000,
-      lazyContentTimeout: 12000,
-      stabilityTimeout: 8000,
-      stabilityChecks: 2,
-      maxRetries: 2,
-      apiWaitTimeout: 12000,
+      networkIdleTimeout: parseMs(
+        process.env.NETWORK_IDLE_TIMEOUT_MS,
+        baseWaits.networkIdleTimeout
+      ),
+      animationTimeout: parseMs(
+        process.env.ANIMATION_TIMEOUT_MS,
+        baseWaits.animationTimeout
+      ),
+      lazyContentTimeout: parseMs(
+        process.env.LAZY_CONTENT_TIMEOUT_MS,
+        baseWaits.lazyContentTimeout
+      ),
+      stabilityTimeout: parseMs(
+        process.env.STABILITY_TIMEOUT_MS,
+        baseWaits.stabilityTimeout
+      ),
+      stabilityChecks: Number(
+        process.env.STABILITY_CHECKS ?? baseWaits.stabilityChecks
+      ),
+      maxRetries: Number(process.env.MAX_RETRIES ?? baseWaits.maxRetries),
+      apiWaitTimeout: parseMs(
+        process.env.API_WAIT_TIMEOUT_MS,
+        baseWaits.apiWaitTimeout
+      ),
     });
   }
 
@@ -131,7 +171,7 @@ class ScreenshotService {
     console.log("Starting optimized page navigation and waiting...");
 
     await page.goto(url, {
-      waitUntil: "load",
+      waitUntil: this.fastMode ? "domcontentloaded" : "load",
       timeout: this.timeout,
     });
 
@@ -231,22 +271,57 @@ class ScreenshotService {
 
   async waitForAllImages(page) {
     try {
-      console.log("Ensuring all images are loaded...");
-      await page.evaluate(async () => {
+      console.log("Ensuring all images are loaded (time-limited)...");
+      const deadlineMs =
+        Date.now() + (this.waitConfig.lazyContentTimeout || 1500);
+
+      await page.evaluate(async (deadline) => {
+        const timeLeft = () => Math.max(0, deadline - Date.now());
+
+        const withTimeout = (p, ms) =>
+          new Promise((resolve) => {
+            let settled = false;
+            const to = setTimeout(() => {
+              if (!settled) {
+                settled = true;
+                resolve(true);
+              }
+            }, ms);
+            p.finally(() => {
+              if (!settled) {
+                settled = true;
+                clearTimeout(to);
+                resolve(true);
+              }
+            });
+          });
+
         const loadImage = (img) =>
           new Promise((resolve) => {
-            if (img.complete && img.naturalWidth > 0) return resolve(true);
-            const done = () => resolve(true);
-            img.addEventListener("load", done, { once: true });
-            img.addEventListener("error", done, { once: true });
+            try {
+              if (img.complete && img.naturalWidth > 0) return resolve(true);
+              const done = () => resolve(true);
+              img.addEventListener("load", done, { once: true });
+              img.addEventListener("error", done, { once: true });
+            } catch {
+              resolve(true);
+            }
           });
 
         const images = Array.from(document.images || []);
-        await Promise.all(images.map(loadImage));
-      });
-      console.log("All images loaded");
+        const promises = images.map((img) =>
+          withTimeout(loadImage(img), Math.max(50, timeLeft()))
+        );
+        await Promise.race([
+          Promise.all(promises),
+          new Promise((resolve) =>
+            setTimeout(resolve, Math.max(0, timeLeft()))
+          ),
+        ]);
+      }, deadlineMs);
+      console.log("Image load wait done (not blocking)");
     } catch (error) {
-      console.log("Image load wait timeout - proceeding");
+      console.log("Image load wait error - proceeding");
     }
   }
 
@@ -527,32 +602,40 @@ class ScreenshotService {
         }
       });
 
-      const { pageHeight, viewportHeight } = await page.evaluate(() => ({
-        pageHeight: Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        ),
-        viewportHeight: window.innerHeight,
-      }));
+      const budgetMs = this.fastMode ? 1500 : 5000;
+      const deadline = Date.now() + budgetMs;
 
-      const scrollSteps = Math.min(
-        Math.ceil(pageHeight / viewportHeight) + 2,
-        8
-      );
+      let iterations = 0;
+      while (Date.now() < deadline && iterations < 40) {
+        const { y, max, vh } = await page.evaluate(() => ({
+          y: window.scrollY || window.pageYOffset || 0,
+          max:
+            Math.max(
+              document.body.scrollHeight,
+              document.documentElement.scrollHeight
+            ) - window.innerHeight,
+          vh: window.innerHeight,
+        }));
 
-      for (let i = 0; i <= scrollSteps; i++) {
-        const scrollPosition = Math.min(
-          (i / scrollSteps) * (pageHeight - viewportHeight),
-          pageHeight
-        );
+        const atBottom = y >= max - 2;
+        if (atBottom) break;
+
+        const next = Math.min(y + Math.floor(vh * 0.9), max);
         await page.evaluate((pos) => {
           window.scrollTo(0, pos);
           window.dispatchEvent(new Event("scroll"));
-        }, scrollPosition);
-        await page.waitForTimeout(250);
+        }, next);
+        await page.waitForTimeout(this.fastMode ? 120 : 200);
+
+        iterations++;
       }
 
-      await page.evaluate(() => window.scrollTo(0, 0));
+      // Ensure we land at exact bottom and give a short settle window
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        window.dispatchEvent(new Event("scroll"));
+      });
+      await page.waitForTimeout(this.fastMode ? 150 : 300);
 
       // A final nudge
       await page.evaluate(() => {
@@ -561,7 +644,7 @@ class ScreenshotService {
       });
 
       // Wait a bit and ensure images are loaded
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(this.fastMode ? 250 : 600);
       await this.waitForAllImages(page);
 
       console.log("Optimized lazy loading complete");
