@@ -11,6 +11,27 @@ const VALIDATION_ERRORS = Object.freeze({
     code: "MISSING_DEVICES",
     validDevices: VALID_DEVICES,
   },
+  MISSING_SELECTOR: {
+    error: "Selector is required for section capture",
+    code: "MISSING_SELECTOR",
+  },
+  INVALID_SELECTOR: {
+    error:
+      "Invalid selector format. Must be a valid CSS selector (element, class, or ID)",
+    code: "INVALID_SELECTOR",
+    examples: [
+      "div",
+      ".class-name",
+      "#element-id",
+      "section.hero",
+      "header#main-header",
+    ],
+  },
+  INVALID_DEVICE_COUNT: {
+    error: "At least 1 device is required, maximum is all available devices",
+    code: "INVALID_DEVICE_COUNT",
+    validDevices: VALID_DEVICES,
+  },
 });
 
 const validateCaptureRequest = (req, res, next) => {
@@ -38,6 +59,86 @@ const validateCaptureRequest = (req, res, next) => {
   }
 
   req.body.devices = [...new Set(devices)];
+  next();
+};
+
+const validateSectionCaptureRequest = (req, res, next) => {
+  const { url, devices, selector } = req.body;
+
+  if (!url) {
+    return res.status(400).json(VALIDATION_ERRORS.MISSING_URL);
+  }
+
+  if (!selector || typeof selector !== "string" || selector.trim() === "") {
+    return res.status(400).json(VALIDATION_ERRORS.MISSING_SELECTOR);
+  }
+
+  // Enhanced CSS selector validation - more permissive for complex selectors
+  const trimmedSelector = selector.trim();
+
+  // Check for basic safety - no script injection attempts
+  if (
+    trimmedSelector.includes("<") ||
+    trimmedSelector.includes(">") ||
+    trimmedSelector.includes("javascript:") ||
+    trimmedSelector.includes("data:")
+  ) {
+    return res.status(400).json({
+      error: "Invalid selector: contains potentially unsafe characters",
+      code: "INVALID_SELECTOR",
+      examples: [
+        "div",
+        ".class-name",
+        "#element-id",
+        "section.hero",
+        "header#main-header",
+      ],
+    });
+  }
+
+  // More permissive pattern that handles complex class combinations
+  const selectorPattern =
+    /^[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*(\s+[a-zA-Z*][a-zA-Z0-9\-_]*(\.[a-zA-Z0-9\-_]+)*(#[a-zA-Z0-9\-_]+)*(\[[a-zA-Z0-9\-_=*"'^$~|:]+(\s*[a-zA-Z0-9\-_=*"'^$~|:]+\s*)*\])*)*$/;
+
+  if (!selectorPattern.test(trimmedSelector)) {
+    return res.status(400).json({
+      error: "Invalid selector format. Must be a valid CSS selector",
+      code: "INVALID_SELECTOR",
+      examples: [
+        "div",
+        ".class-name",
+        "#element-id",
+        "section.hero",
+        "header#main-header",
+        ".elementor-element.elementor-element-bb4cf52",
+        ".class1.class2.class3",
+      ],
+    });
+  }
+
+  if (!devices || !Array.isArray(devices) || devices.length === 0) {
+    return res.status(400).json(VALIDATION_ERRORS.INVALID_DEVICE_COUNT);
+  }
+
+  if (devices.length > VALID_DEVICES.length) {
+    return res.status(400).json(VALIDATION_ERRORS.INVALID_DEVICE_COUNT);
+  }
+
+  const invalidDevices = devices.filter(
+    (device) => !VALID_DEVICES.includes(device)
+  );
+
+  if (invalidDevices.length > 0) {
+    return res.status(400).json({
+      error: `Invalid devices: ${invalidDevices.join(", ")}`,
+      code: "INVALID_DEVICES",
+      invalidDevices,
+      validDevices: VALID_DEVICES,
+    });
+  }
+
+  req.body.devices = [...new Set(devices)];
+  req.body.selector = selector.trim();
   next();
 };
 
@@ -113,7 +214,61 @@ const captureScreenshots = async (req, res) => {
   }
 };
 
+const captureSectionScreenshots = async (req, res) => {
+  const { url, devices, selector, fastMode } = req.body;
+  const baseUrl = `${req.protocol}://${req.get("host")}`;
+  const screenshotService = new ScreenshotService(baseUrl, {
+    fastMode: Boolean(fastMode),
+  });
+
+  try {
+    console.log(
+      `Section screenshot request: ${url} for devices: ${devices.join(
+        ", "
+      )} (selector: ${selector})`
+    );
+    const watchdogMs = Number(process.env.CAPTURE_WATCHDOG_MS || 60000);
+
+    const watchdog = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`CAPTURE_WATCHDOG_TIMEOUT_${watchdogMs}`)),
+        watchdogMs
+      )
+    );
+
+    const result = await Promise.race([
+      screenshotService.captureMultipleSections(url, devices, selector),
+      watchdog,
+    ]);
+
+    const response = createSuccessResponse(result);
+    const statusCode = result.successful > 0 ? 200 : 500;
+
+    res.status(statusCode).json(response);
+  } catch (error) {
+    const message = String(error?.message || "");
+    const isWatchdog = message.startsWith("CAPTURE_WATCHDOG_TIMEOUT_");
+    const code = isWatchdog ? "CAPTURE_TIMEOUT" : "CAPTURE_ERROR";
+    const status = isWatchdog ? 504 : 500;
+
+    console.error("Section screenshot capture error:", error);
+    res.status(status).json({
+      success: false,
+      error: isWatchdog
+        ? "Capture timed out"
+        : "Section screenshot capture failed",
+      message: isWatchdog ? "Global watchdog exceeded" : error.message,
+      code,
+    });
+  }
+};
+
 router.post("/capture", validateCaptureRequest, captureScreenshots);
+router.post(
+  "/capture/section",
+  validateSectionCaptureRequest,
+  captureSectionScreenshots
+);
 
 const getDevicesInfo = (req, res) => {
   const { DEVICE_PRESETS } = require("../config");

@@ -102,6 +102,85 @@ Capture full-page screenshots for specified device types.
 }
 ```
 
+### 🎯 Capture Section Screenshots
+
+**POST** `/capture/section`
+
+Capture screenshots of specific page sections/elements for specified device types.
+
+#### Request Body
+
+```json
+{
+  "url": "https://example.com",
+  "devices": ["mobile", "tablet", "laptop", "desktop"],
+  "selector": ".hero-section"
+}
+```
+
+#### Selector Types
+
+- **Element**: `"div"`, `"section"`, `"header"`
+- **Class**: `".hero-section"`, `".main-content"`, `".navigation"`
+- **ID**: `"#banner"`, `"#navigation"`, `"#footer"`
+- **Complex**: `"section.hero"`, `"header#main-header"`, `"div.content-wrapper"`
+- **Multiple Classes**: `".elementor-element.elementor-element-bb4cf52"`, `".class1.class2.class3"`
+- **Full Class String**: `"elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"`
+
+#### Response
+
+```json
+{
+  "success": true,
+  "url": "https://example.com",
+  "selector": ".hero-section",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "summary": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0
+  },
+  "screenshots": [
+    {
+      "device": "mobile",
+      "url": "http://localhost:3000/uploads/1705315800000_mobile_hero_section_abc123.png",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "selector": ".hero-section",
+      "elementBounds": {
+        "x": 0,
+        "y": 100,
+        "width": 375,
+        "height": 400
+      }
+    },
+    {
+      "device": "desktop",
+      "url": "http://localhost:3000/uploads/1705315800000_desktop_hero_section_def456.png",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "selector": ".hero-section",
+      "elementBounds": {
+        "x": 0,
+        "y": 80,
+        "width": 1920,
+        "height": 600
+      }
+    }
+  ]
+}
+```
+
+#### Device Requirements
+
+- **Minimum**: 1 device required
+- **Maximum**: All available devices (mobile, tablet, laptop, desktop)
+- **Validation**: Invalid devices will return error with valid options
+
 ### 📱 Available Devices
 
 **GET** `/capture/devices`
@@ -192,7 +271,7 @@ Direct access to captured screenshot files with proper caching headers.
 ## Device Presets
 
 | Device  | Width × Height | Scale Factor | Mobile | Touch |
-|---------|----------------|--------------|--------|-------|
+| ------- | -------------- | ------------ | ------ | ----- |
 | Mobile  | 375 × 812      | 2×           | ✓      | ✓     |
 | Tablet  | 768 × 1024     | 2×           | ✓      | ✓     |
 | Laptop  | 1366 × 768     | 1×           | ✗      | ✗     |
@@ -214,6 +293,56 @@ curl -X POST http://localhost:3000/capture \
 curl -X POST http://localhost:3000/capture \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"]}'
+```
+
+### Section Screenshots
+
+#### Capture by Class
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".hero-section"}'
+```
+
+#### Capture by ID
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": "#main-banner"}'
+```
+
+#### Capture by Element
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"], "selector": "header"}'
+```
+
+#### Complex Selector
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["desktop"], "selector": "section.hero#main-hero"}'
+```
+
+#### Multiple Classes (Elementor Example)
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".elementor-element.elementor-element-bb4cf52"}'
+```
+
+#### Full Class String
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"}'
 ```
 
 ### Check Available Devices
@@ -363,6 +492,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 ## Dependencies
 
 **Core:**
+
 - **Express.js** - Web framework
 - **Playwright** - Browser automation
 - **Helmet** - Security headers

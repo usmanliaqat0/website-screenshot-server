@@ -73,24 +73,6 @@ const notFoundHandler = (req, res) => {
   });
 };
 
-const timeoutHandler =
-  (timeout = 60000) =>
-  (req, res, next) => {
-    const timer = setTimeout(() => {
-      if (!res.headersSent) {
-        res.status(408).json({
-          success: false,
-          error: "Request timeout",
-          message: `Request exceeded ${timeout}ms timeout`,
-          code: "REQUEST_TIMEOUT",
-        });
-      }
-    }, timeout);
-
-    res.on("finish", () => clearTimeout(timer));
-    next();
-  };
-
 const requestId = (req, res, next) => {
   req.id = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   res.setHeader("X-Request-ID", req.id);
@@ -116,7 +98,6 @@ const requestLogger = (req, res, next) => {
 module.exports = Object.freeze({
   errorHandler,
   notFoundHandler,
-  timeoutHandler,
   requestId,
   requestLogger,
 });

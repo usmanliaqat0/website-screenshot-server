@@ -75,10 +75,13 @@ class ScreenshotService {
     }
   }
 
-  generateFilename(device) {
+  generateFilename(device, section = null) {
     const timestamp = Date.now();
     const random = Math.random().toString(36).substring(2, 8);
-    return `${timestamp}_${device}_${random}.png`;
+    const sectionSuffix = section
+      ? `_${section.replace(/[^a-zA-Z0-9]/g, "_")}`
+      : "";
+    return `${timestamp}_${device}${sectionSuffix}_${random}.png`;
   }
 
   async captureScreenshot(url, device) {
@@ -141,6 +144,97 @@ class ScreenshotService {
     }
   }
 
+  async captureSectionScreenshot(url, device, selector) {
+    this.validateUrl(url);
+
+    const deviceConfig = DEVICE_PRESETS[device];
+    if (!deviceConfig) {
+      throw new Error(`Unknown device: ${device}`);
+    }
+
+    let context, page;
+
+    try {
+      console.log(
+        `Starting section screenshot capture for ${device}: ${url} (selector: ${selector})`
+      );
+
+      context = await browserManager.createContext(deviceConfig);
+      page = await context.newPage();
+
+      page.setDefaultTimeout(this.timeout);
+      page.setDefaultNavigationTimeout(this.timeout);
+
+      console.log(`Navigating to ${url}...`);
+      await this.navigateAndWaitForCompleteWithRetry(page, url);
+
+      console.log(`Triggering lazy loading for ${device}...`);
+      await this.triggerLazyLoading(page);
+
+      // Wait for the element to be present and visible
+      console.log(`Waiting for element with selector: ${selector}`);
+      await page.waitForSelector(selector, {
+        visible: true,
+        timeout: 10000,
+      });
+
+      // Get element bounding box
+      const element = await page.$(selector);
+      if (!element) {
+        throw new Error(`Element not found with selector: ${selector}`);
+      }
+
+      const boundingBox = await element.boundingBox();
+      if (!boundingBox) {
+        throw new Error(
+          `Element is not visible or has no dimensions: ${selector}`
+        );
+      }
+
+      console.log(`Element found at position: ${JSON.stringify(boundingBox)}`);
+
+      const filename = this.generateFilename(device, selector);
+      const filepath = path.join(this.uploadsDir, filename);
+
+      console.log(`Capturing section screenshot for ${device}...`);
+
+      // Capture screenshot of the specific element
+      await element.screenshot({
+        path: filepath,
+        type: "png",
+        animations: "disabled",
+        optimizeForSpeed: true,
+      });
+
+      console.log(`Section screenshot saved: ${filename}`);
+
+      const imageUrl = this.baseUrl
+        ? `${this.baseUrl}/uploads/${filename}`
+        : `/uploads/${filename}`;
+
+      return {
+        device,
+        filename,
+        url: imageUrl,
+        viewport: { width: deviceConfig.width, height: deviceConfig.height },
+        selector,
+        elementBounds: {
+          x: Math.round(boundingBox.x),
+          y: Math.round(boundingBox.y),
+          width: Math.round(boundingBox.width),
+          height: Math.round(boundingBox.height),
+        },
+      };
+    } catch (error) {
+      console.error(`Section screenshot failed for ${device}:`, error.message);
+      throw new Error(
+        `Section screenshot capture failed for ${device}: ${error.message}`
+      );
+    } finally {
+      await Promise.allSettled([page?.close(), context?.close()]);
+    }
+  }
+
   async navigateAndWaitForCompleteWithRetry(page, url) {
     let lastError;
 
@@ -187,9 +281,8 @@ class ScreenshotService {
       console.log("Network idle timeout - continuing");
     }
 
-    // Ensure fonts are loaded
     await this.waitForFonts(page);
-    // Ensure all images are fully loaded
+
     await this.waitForAllImages(page);
 
     await Promise.all([
@@ -229,6 +322,42 @@ class ScreenshotService {
 
     return {
       url,
+      screenshots: successful,
+      errors: failed,
+      total: devices.length,
+      successful: successful.length,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  async captureMultipleSections(url, devices, selector) {
+    await this.ensureUploadsDirectory();
+
+    console.log(
+      `Capturing section screenshots for ${
+        devices.length
+      } devices: ${devices.join(", ")} (selector: ${selector})`
+    );
+
+    const screenshotPromises = devices.map((device) =>
+      this.captureSectionScreenshot(url, device, selector).catch((error) => ({
+        device,
+        error: error.message,
+        success: false,
+      }))
+    );
+
+    const results = await Promise.all(screenshotPromises);
+    const successful = results.filter((result) => !result.error);
+    const failed = results.filter((result) => result.error);
+
+    console.log(
+      `Section screenshots completed: ${successful.length} successful, ${failed.length} failed`
+    );
+
+    return {
+      url,
+      selector,
       screenshots: successful,
       errors: failed,
       total: devices.length,
@@ -557,7 +686,6 @@ class ScreenshotService {
   async triggerLazyLoading(page) {
     try {
       console.log("Triggering optimized lazy loading...");
-      // Force eager loading for images/pictures and trigger scrolling
       await page.evaluate(() => {
         const setEager = (img) => {
           try {
@@ -578,7 +706,6 @@ class ScreenshotService {
           }
         });
 
-        // Disable IntersectionObservers that gate lazy content
         const OriginalIO = window.IntersectionObserver;
         if (OriginalIO && !window.__ioPatched) {
           window.__ioPatched = true;
@@ -630,20 +757,17 @@ class ScreenshotService {
         iterations++;
       }
 
-      // Ensure we land at exact bottom and give a short settle window
       await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
         window.dispatchEvent(new Event("scroll"));
       });
       await page.waitForTimeout(this.fastMode ? 150 : 300);
 
-      // A final nudge
       await page.evaluate(() => {
         window.dispatchEvent(new Event("scroll"));
         window.dispatchEvent(new Event("resize"));
       });
 
-      // Wait a bit and ensure images are loaded
       await page.waitForTimeout(this.fastMode ? 250 : 600);
       await this.waitForAllImages(page);
 
