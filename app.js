@@ -17,7 +17,6 @@ const browserManager = require("./src/browserManager");
 const app = express();
 const PORT = 3000;
 const UPLOADS_PATH = path.join(__dirname, "uploads");
-const IS_PRODUCTION = false;
 
 const RATE_LIMIT_CONFIG = {
   windowMs: 900000,

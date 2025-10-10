@@ -1,4 +1,4 @@
-const fs = require("fs").promises;
+const fs = require("fs");
 const path = require("path");
 const cron = require("node-cron");
 
@@ -7,7 +7,6 @@ class CleanupService {
     this.uploadsDir = uploadsDir;
     this.cleanupIntervalHours = cleanupIntervalHours;
     this.isRunning = false;
-    this.lastCleanup = null;
     this.cleanupStats = {
       totalDeleted: 0,
       lastRun: null,
@@ -50,7 +49,7 @@ class CleanupService {
    */
   isFileOlderThan(filePath, hours) {
     try {
-      const stats = require("fs").statSync(filePath);
+      const stats = fs.statSync(filePath);
       const fileAge = Date.now() - stats.mtime.getTime();
       const hoursInMs = hours * 60 * 60 * 1000;
       return fileAge > hoursInMs;
@@ -65,7 +64,7 @@ class CleanupService {
    */
   async getImageFiles() {
     try {
-      const files = await fs.readdir(this.uploadsDir);
+      const files = await fs.promises.readdir(this.uploadsDir);
       return files.filter((file) => {
         const ext = path.extname(file).toLowerCase();
         return [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext);
@@ -87,7 +86,6 @@ class CleanupService {
 
     this.isRunning = true;
     const startTime = new Date();
-    let deletedCount = 0;
     const errors = [];
 
     try {
@@ -102,17 +100,14 @@ class CleanupService {
         const filePath = path.join(this.uploadsDir, filename);
 
         try {
-          // First try to parse date from filename
           const fileDate = this.parseFileDate(filename);
           let shouldDelete = false;
 
           if (fileDate) {
-            // Use parsed date from filename
             const fileAge = Date.now() - fileDate.getTime();
             const hoursInMs = this.cleanupIntervalHours * 60 * 60 * 1000;
             shouldDelete = fileAge > hoursInMs;
           } else {
-            // Fallback to file modification time
             shouldDelete = this.isFileOlderThan(
               filePath,
               this.cleanupIntervalHours
@@ -120,8 +115,7 @@ class CleanupService {
           }
 
           if (shouldDelete) {
-            await fs.unlink(filePath);
-            deletedCount++;
+            await fs.promises.unlink(filePath);
             console.log(`Deleted old screenshot: ${filename}`);
             return { filename, deleted: true };
           } else {
@@ -178,13 +172,10 @@ class CleanupService {
   startScheduledCleanup() {
     console.log("Starting scheduled cleanup service (every 12 hours)");
 
-    // Run cleanup every 12 hours at minute 0
     cron.schedule("0 */12 * * *", async () => {
       console.log("Scheduled cleanup triggered");
       await this.cleanupOldScreenshots();
     });
-
-    // Also run cleanup on startup after 1 minute
     setTimeout(async () => {
       console.log("Running initial cleanup on startup");
       await this.cleanupOldScreenshots();
@@ -205,7 +196,6 @@ class CleanupService {
   getStats() {
     return {
       isRunning: this.isRunning,
-      lastCleanup: this.lastCleanup,
       cleanupIntervalHours: this.cleanupIntervalHours,
       stats: this.cleanupStats,
       nextScheduledRun: this.getNextScheduledRun(),
@@ -219,7 +209,6 @@ class CleanupService {
     const now = new Date();
     const nextRun = new Date(now);
 
-    // Find next 12-hour interval (0:00, 12:00)
     const currentHour = now.getHours();
     if (currentHour < 12) {
       nextRun.setHours(12, 0, 0, 0);

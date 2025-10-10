@@ -78,9 +78,8 @@ class ScreenshotService {
 
   generateFilename(device, section = null) {
     const now = new Date();
-    const dateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
-    const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "-"); // HH-MM-SS
-    const timestamp = Date.now();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "-");
     const random = Math.random().toString(36).substring(2, 8);
     const sectionSuffix = section
       ? `_${section.replace(/[^a-zA-Z0-9]/g, "_")}`

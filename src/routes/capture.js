@@ -320,14 +320,10 @@ const getDevicesInfo = (req, res) => {
 
 router.get("/capture/devices", getDevicesInfo);
 
-// Initialize cleanup service
 const uploadsPath = path.join(__dirname, "../../uploads");
-const cleanupService = new CleanupService(uploadsPath, 10); // 10 hours cleanup interval
+const cleanupService = new CleanupService(uploadsPath, 10);
 
-// Start scheduled cleanup
 cleanupService.startScheduledCleanup();
-
-// Manual cleanup trigger
 const triggerCleanup = async (req, res) => {
   try {
     console.log("Manual cleanup triggered");
@@ -349,7 +345,6 @@ const triggerCleanup = async (req, res) => {
   }
 };
 
-// Get cleanup status and statistics
 const getCleanupStatus = (req, res) => {
   try {
     const stats = cleanupService.getStats();
