@@ -1,34 +1,33 @@
 # Website Screenshot Server
 
-A production-ready Node.js API server for capturing full-page website screenshots using Playwright. Features multiple device presets, concurrent processing, and comprehensive error handling.
+A production-ready Node.js API server that captures high-quality website screenshots across multiple devices using Playwright. Perfect for web development, testing, monitoring, and documentation purposes.
 
-## Features
+## Key Features
 
-- 🚀 **High Performance**: Single browser instance with connection reuse for optimal performance
-- 📱 **Multi-Device Support**: Mobile, tablet, laptop, and desktop viewport presets
-- 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging
-- 📸 **Full-Page Screenshots**: Smart content detection and complete page capture
-- ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices
-- 📅 **Date & Time Management**: Organized filenames with date/time stamps for easy management
-- 🗑️ **Automatic Cleanup**: Scheduled cleanup of screenshots older than 10 hours (runs every 12 hours)
-- 🔧 **Manual Cleanup**: Trigger cleanup manually and monitor cleanup status
-- 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation
-- 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging
-- ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection
+This is a production-grade solution designed for real-world applications with:
+
+- **Smart Content Detection**: Automatically waits for lazy-loaded content, animations, and dynamic elements
+- **Multi-Device Support**: Capture screenshots across mobile, tablet, laptop, and desktop viewports
+- **Section Screenshots**: Target specific page elements with CSS selectors
+- **Intelligent Cleanup**: Automatic file management with configurable retention policies
+- **Enterprise Security**: Rate limiting, security headers, and comprehensive error handling
+- **Performance Optimized**: Single browser instance with connection reuse for maximum efficiency
 
 ## Quick Start
 
 ### Prerequisites
 
-- Node.js 18.0.0 or higher
-- npm 8.0.0 or higher
-- Windows, macOS, or Linux
+- **Node.js** 18.0.0 or higher
+- **npm** 8.0.0 or higher
+- **Operating System**: Windows, macOS, or Linux
 
 ### Installation
 
-1. **Install dependencies**
+1. **Clone and install dependencies**
 
    ```bash
+   git clone <your-repo-url>
+   cd website-screenshot-server
    npm install
    ```
 
@@ -38,40 +37,39 @@ A production-ready Node.js API server for capturing full-page website screenshot
    npm run install-browsers
    ```
 
-3. **Configure environment** (optional)
-
-   The server comes with a `.env` file with default settings. You can modify it if needed.
-
-4. **Start the server**
+3. **Start the server**
 
    ```bash
-   # Development (with auto-restart)
+   # Development mode (auto-restart on changes)
    npm run dev
 
-   # Production
+   # Production mode
    npm start
    ```
 
-   The server will start on `http://localhost:3000` by default.
+The server will be available at `http://localhost:3000` with full API documentation.
 
-## API Documentation
+## API Reference
 
-### 📸 Capture Screenshots
+### Core Endpoints
+
+#### Capture Full-Page Screenshots
 
 **POST** `/capture`
 
-Capture full-page screenshots for specified device types.
+Capture complete website screenshots across multiple device types.
 
-#### Request Body
+**Request:**
 
 ```json
 {
   "url": "https://example.com",
-  "devices": ["mobile", "tablet", "laptop", "desktop"]
+  "devices": ["mobile", "tablet", "laptop", "desktop"],
+  "fastMode": false
 }
 ```
 
-#### Response
+**Response:**
 
 ```json
 {
@@ -79,79 +77,43 @@ Capture full-page screenshots for specified device types.
   "url": "https://example.com",
   "timestamp": "2024-01-15T10:30:00.000Z",
   "summary": {
-    "total": 2,
-    "successful": 2,
+    "total": 4,
+    "successful": 4,
     "failed": 0
   },
   "screenshots": [
     {
       "device": "mobile",
-      "url": "http://localhost:3000/uploads/1705315800000_mobile_abc123.png",
-      "viewport": {
-        "width": 375,
-        "height": 812
-      }
+      "url": "http://localhost:3000/uploads/2024-01-15_10-30-00_mobile_abc123.png",
+      "viewport": { "width": 375, "height": 812 }
     },
     {
       "device": "desktop",
-      "url": "http://localhost:3000/uploads/1705315800000_desktop_def456.png",
-      "viewport": {
-        "width": 1920,
-        "height": 1080
-      }
+      "url": "http://localhost:3000/uploads/2024-01-15_10-30-00_desktop_def456.png",
+      "viewport": { "width": 1920, "height": 1080 }
     }
   ]
 }
 ```
 
-### 🎯 Capture Section Screenshots
+#### Capture Section Screenshots
 
 **POST** `/capture/section`
 
-Capture screenshots of specific page sections/elements for specified device types.
+Capture specific page sections or elements using CSS selectors.
 
-#### Request Body
+**Request:**
 
 ```json
 {
   "url": "https://example.com",
-  "devices": ["mobile", "tablet", "laptop", "desktop"],
-  "selector": ".hero-section"
+  "devices": ["mobile", "desktop"],
+  "selector": ".hero-section",
+  "fastMode": false
 }
 ```
 
-#### Selector Types
-
-- **Element**: `"div"`, `"section"`, `"header"`
-- **Class**: `".hero-section"`, `".main-content"`, `".navigation"`
-- **ID**: `"#banner"`, `"#navigation"`, `"#footer"`
-- **Complex**: `"section.hero"`, `"header#main-header"`, `"div.content-wrapper"`
-- **Multiple Classes (Chained)**: `".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"`
-- **Data Attributes**: `"[data-id='bb4cf52']"`, `"[data-element_type='container']"`
-
-#### ⚠️ Important: Class Selector Format
-
-When copying class names from HTML, you need to format them correctly:
-
-**❌ Wrong (space-separated):**
-
-```json
-"selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"
-```
-
-**✅ Correct (chained with dots):**
-
-```json
-"selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"
-```
-
-**✅ Alternative (data attribute - more reliable):**
-
-```json
-"selector": "[data-id='bb4cf52']"
-```
-
-#### Response
+**Response:**
 
 ```json
 {
@@ -167,11 +129,8 @@ When copying class names from HTML, you need to format them correctly:
   "screenshots": [
     {
       "device": "mobile",
-      "url": "http://localhost:3000/uploads/1705315800000_mobile_hero_section_abc123.png",
-      "viewport": {
-        "width": 375,
-        "height": 812
-      },
+      "url": "http://localhost:3000/uploads/2024-01-15_10-30-00_mobile_hero_section_abc123.png",
+      "viewport": { "width": 375, "height": 812 },
       "selector": ".hero-section",
       "elementBounds": {
         "x": 0,
@@ -179,39 +138,18 @@ When copying class names from HTML, you need to format them correctly:
         "width": 375,
         "height": 400
       }
-    },
-    {
-      "device": "desktop",
-      "url": "http://localhost:3000/uploads/1705315800000_desktop_hero_section_def456.png",
-      "viewport": {
-        "width": 1920,
-        "height": 1080
-      },
-      "selector": ".hero-section",
-      "elementBounds": {
-        "x": 0,
-        "y": 80,
-        "width": 1920,
-        "height": 600
-      }
     }
   ]
 }
 ```
 
-#### Device Requirements
-
-- **Minimum**: 1 device required
-- **Maximum**: All available devices (mobile, tablet, laptop, desktop)
-- **Validation**: Invalid devices will return error with valid options
-
-### 📱 Available Devices
+#### Available Devices
 
 **GET** `/capture/devices`
 
-List all available device presets and their configurations.
+Get all available device presets and their configurations.
 
-#### Response
+**Response:**
 
 ```json
 {
@@ -246,13 +184,15 @@ List all available device presets and their configurations.
 }
 ```
 
-### 🧹 Manual Cleanup
+### Management Endpoints
+
+#### Manual Cleanup
 
 **POST** `/capture/cleanup`
 
 Manually trigger cleanup of screenshots older than 10 hours.
 
-#### Response
+**Response:**
 
 ```json
 {
@@ -269,13 +209,13 @@ Manually trigger cleanup of screenshots older than 10 hours.
 }
 ```
 
-### 📊 Cleanup Status
+#### Cleanup Status
 
 **GET** `/capture/cleanup/status`
 
 Get cleanup service status and statistics.
 
-#### Response
+**Response:**
 
 ```json
 {
@@ -294,13 +234,13 @@ Get cleanup service status and statistics.
 }
 ```
 
-### 🏥 Health Check
+#### Health Check
 
 **GET** `/health`
 
-Server health and status information with uptime and version.
+Server health and status information.
 
-#### Response
+**Response:**
 
 ```json
 {
@@ -315,13 +255,13 @@ Server health and status information with uptime and version.
 }
 ```
 
-### 📄 API Information
+#### API Information
 
 **GET** `/`
 
-Get complete API documentation and endpoint information.
+Complete API documentation and endpoint information.
 
-### 🖼️ Access Screenshots
+#### Access Screenshots
 
 **GET** `/uploads/{filename}`
 
@@ -329,12 +269,64 @@ Direct access to captured screenshot files with proper caching headers.
 
 ## Device Presets
 
-| Device  | Width × Height | Scale Factor | Mobile | Touch |
-| ------- | -------------- | ------------ | ------ | ----- |
-| Mobile  | 375 × 812      | 2×           | ✓      | ✓     |
-| Tablet  | 768 × 1024     | 2×           | ✓      | ✓     |
-| Laptop  | 1366 × 768     | 1×           | ✗      | ✗     |
-| Desktop | 1920 × 1080    | 1×           | ✗      | ✗     |
+| Device  | Resolution  | Scale | Mobile | Touch | Use Case                    |
+| ------- | ----------- | ----- | ------ | ----- | --------------------------- |
+| Mobile  | 375 × 812   | 2×    | ✓      | ✓     | iPhone-style mobile testing |
+| Tablet  | 768 × 1024  | 2×    | ✓      | ✓     | iPad-style tablet testing   |
+| Laptop  | 1366 × 768  | 1×    | ✗      | ✗     | Standard laptop screens     |
+| Desktop | 1920 × 1080 | 1×    | ✗      | ✗     | Full desktop experience     |
+
+## CSS Selector Guide
+
+When capturing section screenshots, you can use various CSS selector types:
+
+### Basic Selectors
+
+```javascript
+// Element selectors
+"div", "section", "header", "main";
+
+// Class selectors
+".hero-section", ".main-content", ".navigation";
+
+// ID selectors
+"#banner", "#navigation", "#footer";
+```
+
+### Complex Selectors
+
+```javascript
+// Combined selectors
+"section.hero", "header#main-header", "div.content-wrapper";
+
+// Multiple classes (chained)
+(".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed");
+
+// Data attributes (recommended for dynamic content)
+"[data-id='bb4cf52']", "[data-element_type='container']";
+```
+
+### Important: Class Selector Formatting
+
+When copying class names from HTML, format them correctly:
+
+**Wrong (space-separated):**
+
+```json
+"selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed"
+```
+
+**Correct (chained with dots):**
+
+```json
+"selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed"
+```
+
+**Alternative (data attribute - more reliable):**
+
+```json
+"selector": "[data-id='bb4cf52']"
+```
 
 ## Usage Examples
 
@@ -356,7 +348,7 @@ curl -X POST http://localhost:3000/capture \
 
 ### Section Screenshots
 
-#### Capture by Class
+#### By Class
 
 ```bash
 curl -X POST http://localhost:3000/capture/section \
@@ -364,20 +356,12 @@ curl -X POST http://localhost:3000/capture/section \
   -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".hero-section"}'
 ```
 
-#### Capture by ID
+#### By ID
 
 ```bash
 curl -X POST http://localhost:3000/capture/section \
   -H "Content-Type: application/json" \
   -d '{"url": "https://example.com", "devices": ["tablet"], "selector": "#main-banner"}'
-```
-
-#### Capture by Element
-
-```bash
-curl -X POST http://localhost:3000/capture/section \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"], "selector": "header"}'
 ```
 
 #### Complex Selector
@@ -388,28 +372,12 @@ curl -X POST http://localhost:3000/capture/section \
   -d '{"url": "https://example.com", "devices": ["desktop"], "selector": "section.hero#main-hero"}'
 ```
 
-#### Multiple Classes (Elementor Example)
+### Fast Mode
 
 ```bash
-curl -X POST http://localhost:3000/capture/section \
+curl -X POST http://localhost:3000/capture \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".elementor-element.elementor-element-bb4cf52"}'
-```
-
-#### Full Class String (Chained)
-
-```bash
-curl -X POST http://localhost:3000/capture/section \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"}'
-```
-
-#### Data Attribute Selector (Recommended)
-
-```bash
-curl -X POST http://localhost:3000/capture/section \
-  -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": "[data-id=\'bb4cf52\']"}'
+  -d '{"url": "https://example.com", "devices": ["desktop"], "fastMode": true}'
 ```
 
 ### Check Available Devices
@@ -424,19 +392,82 @@ curl http://localhost:3000/capture/devices
 curl -X POST http://localhost:3000/capture/cleanup
 ```
 
-### Check Cleanup Status
-
-```bash
-curl http://localhost:3000/capture/cleanup/status
-```
-
 ### Health Check
 
 ```bash
 curl http://localhost:3000/health
 ```
 
-## Project Structure
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file to customize the server behavior:
+
+```bash
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Rate Limiting
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=1000
+
+# Screenshot Settings
+SCREENSHOT_TIMEOUT=30000
+FAST_MODE=false
+PAGE_TIMEOUT_MS=30000
+
+# Cleanup Settings
+CLEANUP_INTERVAL_HOURS=10
+
+# Uploads Directory
+UPLOADS_PATH=./uploads
+
+# Advanced Wait Settings
+NETWORK_IDLE_TIMEOUT_MS=12000
+ANIMATION_TIMEOUT_MS=5000
+LAZY_CONTENT_TIMEOUT_MS=12000
+STABILITY_TIMEOUT_MS=8000
+STABILITY_CHECKS=2
+MAX_RETRIES=2
+API_WAIT_TIMEOUT_MS=12000
+
+# Watchdog Settings
+CAPTURE_WATCHDOG_MS=60000
+```
+
+### Performance Tuning
+
+#### Fast Mode
+
+Enable fast mode for quicker screenshots with reduced quality:
+
+```json
+{
+  "url": "https://example.com",
+  "devices": ["desktop"],
+  "fastMode": true
+}
+```
+
+#### Custom Timeouts
+
+Adjust timeouts based on your website's loading characteristics:
+
+```bash
+# For slow-loading sites
+PAGE_TIMEOUT_MS=60000
+NETWORK_IDLE_TIMEOUT_MS=20000
+
+# For fast sites
+PAGE_TIMEOUT_MS=15000
+NETWORK_IDLE_TIMEOUT_MS=5000
+```
+
+## Architecture
+
+### Project Structure
 
 ```
 website-screenshot-server/
@@ -455,128 +486,286 @@ website-screenshot-server/
 └── uploads/                  # Screenshot storage directory
 ```
 
+### Key Components
+
+#### BrowserManager
+
+- **Single Instance**: Reuses one Chromium browser for all requests
+- **Context Isolation**: Creates separate contexts for each device
+- **Resource Management**: Automatic cleanup and memory management
+
+#### ScreenshotService
+
+- **Smart Waiting**: Waits for content, animations, and API calls
+- **Lazy Loading**: Triggers lazy-loaded content and images
+- **Error Handling**: Comprehensive retry logic and error recovery
+
+#### CleanupService
+
+- **Scheduled Cleanup**: Runs every 12 hours automatically
+- **Manual Triggers**: On-demand cleanup via API
+- **Smart Detection**: Uses both filename parsing and file modification time
+
 ## Security Features
+
+### Built-in Security
 
 - **Helmet.js**: Comprehensive security headers including CSP
 - **Rate Limiting**: 1000 requests per 15-minute window per IP
 - **CORS**: Configurable cross-origin resource sharing
 - **Input Validation**: URL and parameter sanitization
-- **Request Logging**: Unique request IDs for audit trails
-- **Graceful Shutdown**: Clean browser and server cleanup
-- **Error Handling**: Secure error responses without internal details
+- **Path Traversal Protection**: Prevents directory traversal attacks
+- **File Type Validation**: Only PNG files allowed for uploads
+
+### Security Headers
+
+```
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'
+```
 
 ## Performance Features
 
+### Optimization Strategies
+
 - **Browser Reuse**: Single Chromium instance for all requests
 - **Parallel Processing**: Concurrent screenshot capture across devices
-- **Network Optimization**: Smart wait strategies for content loading
+- **Smart Waiting**: Intelligent content detection and loading strategies
 - **Memory Management**: Automatic context cleanup after requests
 - **File Caching**: Proper cache headers for uploaded images
 - **Request Deduplication**: Removes duplicate devices from requests
 
-## Error Handling
+### Performance Monitoring
 
-Comprehensive error responses with appropriate HTTP status codes:
+- **Request Tracking**: Unique request IDs for debugging
+- **Response Times**: Detailed logging of request duration
+- **Memory Usage**: Browser process monitoring
+- **Error Tracking**: Comprehensive error logging and reporting
 
-- **400**: Bad Request (validation errors, invalid URLs)
-- **408**: Request Timeout (screenshot capture timeout)
-- **429**: Too Many Requests (rate limit exceeded)
-- **500**: Internal Server Error (capture failures)
-- **503**: Service Unavailable (browser issues)
+## Docker Deployment
 
-Example error response:
-
-```json
-{
-  "success": false,
-  "error": "Invalid devices: mobile2, tablet2",
-  "code": "INVALID_DEVICES",
-  "invalidDevices": ["mobile2", "tablet2"],
-  "validDevices": ["mobile", "tablet", "laptop", "desktop"]
-}
-```
-
-## Scripts
-
-- `npm start` - Start production server
-- `npm run dev` - Start with auto-restart on changes
-- `npm run install-browsers` - Install Playwright browsers
-- `npm run health` - Quick health check via curl
-- `npm run clean` - Remove all PNG files from uploads
-
-## Environment Configuration
-
-Create or modify the `.env` file for custom settings:
-
-```bash
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=1000
-
-# Screenshot Settings
-SCREENSHOT_TIMEOUT=30000
-UPLOADS_PATH=./uploads
-```
-
-## Production Deployment
-
-### Docker (Recommended)
+### Dockerfile
 
 ```dockerfile
 FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Set working directory
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
+
+# Install dependencies
 RUN npm ci --only=production
-RUN npx playwright install chromium
+
+# Install Playwright browsers
+RUN npx playwright install chromium --with-deps
+
+# Copy application code
 COPY . .
+
+# Create uploads directory
+RUN mkdir -p uploads
+
+# Set proper permissions
+RUN chown -R node:node /app
+USER node
+
+# Expose port
 EXPOSE 3000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+
+# Start application
 CMD ["npm", "start"]
 ```
 
-### PM2 Process Manager
+### Docker Compose
+
+```yaml
+version: "3.8"
+
+services:
+  screenshot-server:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./.env:/app/.env
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+```
+
+## Process Management
+
+### PM2 (Recommended for Production)
+
+#### Installation
 
 ```bash
+# Install PM2 globally
 npm install -g pm2
-pm2 start app.js --name screenshot-server
+
+# Verify installation
+pm2 --version
+```
+
+#### Configuration
+
+Create `ecosystem.config.js`:
+
+```javascript
+module.exports = {
+  apps: [
+    {
+      name: "screenshot-server",
+      script: "app.js",
+      instances: 1,
+      exec_mode: "fork",
+      env: {
+        NODE_ENV: "development",
+        PORT: 3000,
+      },
+      env_production: {
+        NODE_ENV: "production",
+        PORT: 3000,
+      },
+      error_file: "./logs/err.log",
+      out_file: "./logs/out.log",
+      log_file: "./logs/combined.log",
+      time: true,
+      max_memory_restart: "1G",
+      node_args: "--max-old-space-size=4096",
+    },
+  ],
+};
+```
+
+#### Usage
+
+```bash
+# Start application
+pm2 start ecosystem.config.js
+
+# Start in production mode
+pm2 start ecosystem.config.js --env production
+
+# Monitor application
+pm2 monit
+
+# View logs
+pm2 logs screenshot-server
+
+# Restart application
+pm2 restart screenshot-server
+
+# Stop application
+pm2 stop screenshot-server
+
+# Save PM2 configuration
 pm2 save
+
+# Setup PM2 to start on boot
 pm2 startup
 ```
 
-### Environment Variables for Production
+## Nginx Configuration
 
-```bash
-NODE_ENV=production
-PORT=3000
-UPLOADS_PATH=/app/uploads
-SCREENSHOT_TIMEOUT=30000
-RATE_LIMIT_MAX_REQUESTS=100
+### Basic Configuration
+
+Create `/etc/nginx/sites-available/screenshot-server`:
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=screenshot:10m rate=10r/s;
+    limit_req zone=screenshot burst=20 nodelay;
+
+    # Proxy to Node.js application
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+
+        # Timeouts
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+
+    # Static files caching
+    location /uploads/ {
+        proxy_pass http://localhost:3000;
+        expires 1d;
+        add_header Cache-Control "public, immutable";
+    }
+}
 ```
 
-## System Requirements
+## Development
 
-- **Node.js**: 18.0.0 or higher
-- **RAM**: Minimum 1GB, recommended 2GB+
-- **Storage**: ~500MB for browser binaries + screenshot storage
-- **OS**: Windows, macOS, or Linux
+### Available Scripts
 
-## Dependencies
+```bash
+# Start production server
+npm start
 
-**Core:**
+# Start development server (auto-restart)
+npm run dev
 
-- **Express.js** - Web framework
-- **Playwright** - Browser automation
-- **Helmet** - Security headers
-- **CORS** - Cross-origin support
-- **express-rate-limit** - Rate limiting
-- **node-cron** - Scheduled cleanup tasks
+# Install Playwright browsers
+npm run install-browsers
+
+# Quick health check
+npm run health
+
+# Clean all screenshots
+npm run clean
+```
+
+### Development Tips
+
+1. **Use Fast Mode**: Enable `fastMode: true` for quicker development iterations
+2. **Monitor Logs**: Check console output for detailed request information
+3. **Test Selectors**: Use browser dev tools to verify CSS selectors before API calls
+4. **Health Checks**: Use `/health` endpoint to monitor server status
 
 ## Troubleshooting
 
-### Browser Installation Issues
+### Common Issues
+
+#### Browser Installation Problems
 
 ```bash
 # Reinstall browser binaries
@@ -586,38 +775,214 @@ npm run install-browsers
 npx playwright install --dry-run chromium
 ```
 
-### Memory Issues
+#### Memory Issues
 
 - Increase Node.js memory limit: `node --max-old-space-size=4096 app.js`
-- Monitor browser processes
+- Monitor browser processes with `htop` or Task Manager
 - Adjust concurrent request limits
 
-### Permission Issues
+#### Permission Issues
 
-- Ensure uploads directory is writable
+- Ensure uploads directory is writable: `chmod 755 uploads/`
 - Check file system permissions
 - Verify browser can access system resources
 
-### Performance Issues
+#### Performance Issues
 
-- Monitor memory usage with `htop` or Task Manager
+- Monitor memory usage with system tools
 - Check `uploads/` directory disk usage
 - Review rate limiting configuration
 
-## License
+### Error Codes
 
-MIT License - See LICENSE file for details.
+| Code               | Description                           | Solution                                           |
+| ------------------ | ------------------------------------- | -------------------------------------------------- |
+| `MISSING_URL`      | URL parameter required                | Provide valid URL in request body                  |
+| `INVALID_DEVICES`  | Invalid device type                   | Use valid devices: mobile, tablet, laptop, desktop |
+| `MISSING_SELECTOR` | Selector required for section capture | Provide CSS selector for section screenshots       |
+| `INVALID_SELECTOR` | Invalid CSS selector format           | Use proper CSS selector syntax                     |
+| `CAPTURE_TIMEOUT`  | Screenshot capture timed out          | Increase timeout or check website accessibility    |
+| `BROWSER_ERROR`    | Browser service unavailable           | Check browser installation and restart server      |
+
+## Monitoring & Logging
+
+### Request Logging
+
+Every request is logged with:
+
+- Unique request ID
+- HTTP method and URL
+- Client IP address
+- Response status code
+- Processing duration
+
+### Health Monitoring
+
+- Server uptime tracking
+- Browser connection status
+- Memory usage monitoring
+- Error rate tracking
+
+### Cleanup Monitoring
+
+- Automatic cleanup schedule
+- Manual cleanup triggers
+- File deletion statistics
+- Error tracking and reporting
+
+## Code Examples
+
+### JavaScript/Node.js
+
+```javascript
+const axios = require("axios");
+
+async function captureScreenshot(url, devices) {
+  try {
+    const response = await axios.post("http://localhost:3000/capture", {
+      url,
+      devices,
+      fastMode: false,
+    });
+
+    console.log("Screenshots:", response.data.screenshots);
+    return response.data;
+  } catch (error) {
+    console.error("Error:", error.response.data);
+    throw error;
+  }
+}
+
+// Usage
+captureScreenshot("https://example.com", ["mobile", "desktop"]);
+```
+
+### Python
+
+```python
+import requests
+import json
+
+def capture_screenshot(url, devices):
+    response = requests.post('http://localhost:3000/capture',
+        json={
+            'url': url,
+            'devices': devices,
+            'fastMode': False
+        }
+    )
+
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Error: {response.json()}")
+
+# Usage
+result = capture_screenshot('https://example.com', ['mobile', 'desktop'])
+print(result['screenshots'])
+```
+
+### PHP
+
+```php
+<?php
+function captureScreenshot($url, $devices) {
+    $data = json_encode([
+        'url' => $url,
+        'devices' => $devices,
+        'fastMode' => false
+    ]);
+
+    $options = [
+        'http' => [
+            'header' => "Content-Type: application/json\r\n",
+            'method' => 'POST',
+            'content' => $data
+        ]
+    ];
+
+    $context = stream_context_create($options);
+    $result = file_get_contents('http://localhost:3000/capture', false, $context);
+
+    return json_decode($result, true);
+}
+
+// Usage
+$result = captureScreenshot('https://example.com', ['mobile', 'desktop']);
+print_r($result['screenshots']);
+?>
+```
+
+## Best Practices
+
+### API Usage
+
+1. **Use appropriate timeouts** for your use case
+2. **Enable fast mode** for development and testing
+3. **Check health endpoint** before making requests
+4. **Handle errors gracefully** with proper error codes
+5. **Respect rate limits** and implement backoff strategies
+
+### Selector Best Practices
+
+1. **Use data attributes** when available (more reliable)
+2. **Test selectors** in browser dev tools first
+3. **Avoid complex selectors** when simple ones work
+4. **Use specific selectors** to avoid ambiguity
+5. **Consider mobile/desktop differences** in element visibility
+
+### Performance Optimization
+
+1. **Use fast mode** for non-critical captures
+2. **Batch requests** when possible
+3. **Monitor memory usage** in production
+4. **Implement caching** for frequently accessed screenshots
+5. **Use appropriate device sets** for your needs
+
+### Error Handling
+
+1. **Check response status** before processing
+2. **Handle timeout errors** with retry logic
+3. **Validate selectors** before making requests
+4. **Implement fallback strategies** for critical captures
+5. **Monitor error rates** and adjust accordingly
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+We welcome contributions! Here's how to get started:
+
+1. **Fork the repository**
+2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
+3. **Make your changes** and add tests if applicable
+4. **Commit your changes**: `git commit -m 'Add amazing feature'`
+5. **Push to the branch**: `git push origin feature/amazing-feature`
+6. **Open a Pull Request**
+
+### Development Guidelines
+
+- Follow existing code style and patterns
+- Add comprehensive error handling
+- Include relevant tests
+- Update documentation for new features
+- Ensure backward compatibility
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- **Playwright** - For the excellent browser automation framework
+- **Express.js** - For the robust web framework
+- **Node.js** - For the powerful runtime environment
+
+## Support
+
+- **Documentation**: Visit `http://localhost:3000` for interactive API docs
+- **Health Check**: Use `/health` endpoint for server status
+- **Issues**: Report bugs and feature requests via GitHub Issues
+- **Logs**: Check console output for detailed error information
 
 ---
 
-**API Documentation**: Visit `http://localhost:3000` for interactive endpoint documentation.
-
-**Need help?** Check the health endpoint at `/health` or review the logs for detailed error information.
+**Ready to capture the web?** Start with a simple screenshot and explore the full power of this production-ready screenshot API!
