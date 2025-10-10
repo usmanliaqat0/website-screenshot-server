@@ -9,9 +9,11 @@ A production-ready Node.js API server for capturing full-page website screenshot
 - 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging
 - 📸 **Full-Page Screenshots**: Smart content detection and complete page capture
 - ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices
+- 📅 **Date & Time Management**: Organized filenames with date/time stamps for easy management
+- 🗑️ **Automatic Cleanup**: Scheduled cleanup of screenshots older than 10 hours (runs every 12 hours)
+- 🔧 **Manual Cleanup**: Trigger cleanup manually and monitor cleanup status
 - 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation
 - 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging
-- 🗑️ **File Management**: Built-in endpoint for clearing uploaded screenshots
 - ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection
 
 ## Quick Start
@@ -244,19 +246,51 @@ List all available device presets and their configurations.
 }
 ```
 
-### 🗑️ Clear All Images
+### 🧹 Manual Cleanup
 
-**DELETE** `/capture/clear`
+**POST** `/capture/cleanup`
 
-Delete all screenshot images from the uploads directory.
+Manually trigger cleanup of screenshots older than 10 hours.
 
 #### Response
 
 ```json
 {
   "success": true,
-  "message": "Successfully deleted 5 images",
-  "deletedCount": 5
+  "message": "Cleanup completed",
+  "result": {
+    "success": true,
+    "deletedCount": 3,
+    "totalChecked": 8,
+    "duration": 1250,
+    "errors": [],
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+### 📊 Cleanup Status
+
+**GET** `/capture/cleanup/status`
+
+Get cleanup service status and statistics.
+
+#### Response
+
+```json
+{
+  "success": true,
+  "cleanup": {
+    "isRunning": false,
+    "lastCleanup": "2024-01-15T10:30:00.000Z",
+    "cleanupIntervalHours": 10,
+    "stats": {
+      "totalDeleted": 15,
+      "lastRun": "2024-01-15T10:30:00.000Z",
+      "errors": []
+    },
+    "nextScheduledRun": "2024-01-15T12:00:00.000Z"
+  }
 }
 ```
 
@@ -272,7 +306,10 @@ Server health and status information with uptime and version.
 {
   "status": "healthy",
   "timestamp": "2024-01-15T10:30:00.000Z",
-  "uptime": 3600.5,
+  "uptime": {
+    "seconds": 3600,
+    "formatted": "1h 0m 0s"
+  },
   "version": "1.0.0",
   "environment": "development"
 }
@@ -381,10 +418,16 @@ curl -X POST http://localhost:3000/capture/section \
 curl http://localhost:3000/capture/devices
 ```
 
-### Clear All Screenshots
+### Manual Cleanup
 
 ```bash
-curl -X DELETE http://localhost:3000/capture/clear
+curl -X POST http://localhost:3000/capture/cleanup
+```
+
+### Check Cleanup Status
+
+```bash
+curl http://localhost:3000/capture/cleanup/status
 ```
 
 ### Health Check
@@ -403,6 +446,7 @@ website-screenshot-server/
 │   ├── browserManager.js     # Browser instance management
 │   ├── config.js             # Device presets configuration
 │   ├── screenshotService.js  # Core screenshot logic
+│   ├── cleanupService.js     # Automatic cleanup service
 │   ├── middleware/
 │   │   ├── errorHandler.js   # Error handling & logging
 │   │   └── static.js         # Static file serving
@@ -528,6 +572,7 @@ RATE_LIMIT_MAX_REQUESTS=100
 - **Helmet** - Security headers
 - **CORS** - Cross-origin support
 - **express-rate-limit** - Rate limiting
+- **node-cron** - Scheduled cleanup tasks
 
 ## Troubleshooting
 

@@ -1,6 +1,8 @@
 const express = require("express");
 const ScreenshotService = require("../screenshotService");
 const { VALID_DEVICES } = require("../config");
+const CleanupService = require("../cleanupService");
+const path = require("path");
 
 const router = express.Router();
 
@@ -318,52 +320,55 @@ const getDevicesInfo = (req, res) => {
 
 router.get("/capture/devices", getDevicesInfo);
 
-const deleteAllImages = async (req, res) => {
-  const fs = require("fs").promises;
-  const path = require("path");
+// Initialize cleanup service
+const uploadsPath = path.join(__dirname, "../../uploads");
+const cleanupService = new CleanupService(uploadsPath, 10); // 10 hours cleanup interval
 
+// Start scheduled cleanup
+cleanupService.startScheduledCleanup();
+
+// Manual cleanup trigger
+const triggerCleanup = async (req, res) => {
   try {
-    const uploadsPath = path.join(__dirname, "../../uploads");
-
-    const files = await fs.readdir(uploadsPath);
-
-    const imageFiles = files.filter((file) => {
-      const ext = path.extname(file).toLowerCase();
-      return [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"].includes(ext);
-    });
-
-    if (imageFiles.length === 0) {
-      return res.json({
-        success: true,
-        message: "No images found to delete",
-        deletedCount: 0,
-      });
-    }
-
-    const deletePromises = imageFiles.map((file) =>
-      fs.unlink(path.join(uploadsPath, file))
-    );
-
-    await Promise.all(deletePromises);
-
-    console.log(`Deleted ${imageFiles.length} images from uploads folder`);
+    console.log("Manual cleanup triggered");
+    const result = await cleanupService.cleanupOldScreenshots();
 
     res.json({
       success: true,
-      message: `Successfully deleted ${imageFiles.length} images`,
-      deletedCount: imageFiles.length,
+      message: "Cleanup completed",
+      result: result,
     });
   } catch (error) {
-    console.error("Error deleting images:", error);
+    console.error("Manual cleanup error:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to delete images",
+      error: "Cleanup failed",
       message: error.message,
-      code: "DELETE_ERROR",
+      code: "CLEANUP_ERROR",
     });
   }
 };
 
-router.delete("/capture/clear", deleteAllImages);
+// Get cleanup status and statistics
+const getCleanupStatus = (req, res) => {
+  try {
+    const stats = cleanupService.getStats();
+    res.json({
+      success: true,
+      cleanup: stats,
+    });
+  } catch (error) {
+    console.error("Get cleanup status error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get cleanup status",
+      message: error.message,
+      code: "STATUS_ERROR",
+    });
+  }
+};
+
+router.post("/capture/cleanup", triggerCleanup);
+router.get("/capture/cleanup/status", getCleanupStatus);
 
 module.exports = router;

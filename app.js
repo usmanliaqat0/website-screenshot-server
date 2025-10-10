@@ -65,13 +65,36 @@ app.use(staticMiddleware(UPLOADS_PATH));
 app.use("/", captureRoutes);
 
 const getHealthStatus = (req, res) => {
+  const uptimeSeconds = process.uptime();
+  const uptimeFormatted = formatUptime(uptimeSeconds);
+
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    uptime: {
+      seconds: Math.floor(uptimeSeconds),
+      formatted: uptimeFormatted,
+    },
     version: "1.0.0",
     environment: "development",
   });
+};
+
+const formatUptime = (seconds) => {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m ${secs}s`;
+  } else if (hours > 0) {
+    return `${hours}h ${minutes}m ${secs}s`;
+  } else if (minutes > 0) {
+    return `${minutes}m ${secs}s`;
+  } else {
+    return `${secs}s`;
+  }
 };
 
 const getApiInfo = (req, res) => {
@@ -85,6 +108,9 @@ const getApiInfo = (req, res) => {
       "Section screenshot capture with CSS selectors",
       "Parallel processing for concurrent screenshots",
       "Full-page screenshot capture with smart content detection",
+      "Date and time-based screenshot management with organized filenames",
+      "Automatic cleanup of screenshots older than 10 hours (runs every 12 hours)",
+      "Manual cleanup triggers and status monitoring",
       "Rate limiting and security headers",
       "Request logging and health monitoring",
       "File management and cleanup utilities",
@@ -122,13 +148,19 @@ const getApiInfo = (req, res) => {
         response:
           "Device names, viewport dimensions, scale factors, and mobile flags",
       },
-      "DELETE /capture/clear": {
-        description: "Delete all screenshot images from uploads directory",
-        response: "Deletion count and success status",
+      "POST /capture/cleanup": {
+        description:
+          "Manually trigger cleanup of screenshots older than 10 hours",
+        response: "Cleanup results with deleted count and statistics",
+      },
+      "GET /capture/cleanup/status": {
+        description: "Get cleanup service status and statistics",
+        response: "Cleanup service status, last run time, and statistics",
       },
       "GET /health": {
         description: "Server health check with uptime and version information",
-        response: "Status, timestamp, uptime, version, and environment",
+        response:
+          "Status, timestamp, uptime (seconds and formatted), version, and environment",
       },
       "GET /": {
         description: "API documentation and server information",
@@ -152,7 +184,10 @@ const getApiInfo = (req, res) => {
       multipleDevices: "POST /capture with all device types in devices array",
       checkDevices: "GET /capture/devices to see all available presets",
       healthCheck: "GET /health for server status and monitoring",
-      clearImages: "DELETE /capture/clear to remove all screenshots",
+      manualCleanup:
+        "POST /capture/cleanup to manually trigger cleanup of old screenshots",
+      cleanupStatus:
+        "GET /capture/cleanup/status to check cleanup service status and statistics",
     },
     rateLimits: {
       maxRequests: 1000,
