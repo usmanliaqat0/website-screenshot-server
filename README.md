@@ -9,9 +9,11 @@ A production-ready Node.js API server for capturing full-page website screenshot
 - 🛡️ **Production Ready**: Security headers (Helmet), CORS, rate limiting, and request logging
 - 📸 **Full-Page Screenshots**: Smart content detection and complete page capture
 - ⚡ **Parallel Processing**: Concurrent screenshot capture across multiple devices
+- 📅 **Date & Time Management**: Organized filenames with date/time stamps for easy management
+- 🗑️ **Automatic Cleanup**: Scheduled cleanup of screenshots older than 10 hours (runs every 12 hours)
+- 🔧 **Manual Cleanup**: Trigger cleanup manually and monitor cleanup status
 - 🔧 **Robust Error Handling**: Comprehensive error mapping and graceful degradation
 - 📊 **Monitoring**: Health checks, request ID tracking, and detailed logging
-- 🗑️ **File Management**: Built-in endpoint for clearing uploaded screenshots
 - ⏱️ **Smart Timeouts**: Configurable timeouts with network idle detection
 
 ## Quick Start
@@ -102,6 +104,107 @@ Capture full-page screenshots for specified device types.
 }
 ```
 
+### 🎯 Capture Section Screenshots
+
+**POST** `/capture/section`
+
+Capture screenshots of specific page sections/elements for specified device types.
+
+#### Request Body
+
+```json
+{
+  "url": "https://example.com",
+  "devices": ["mobile", "tablet", "laptop", "desktop"],
+  "selector": ".hero-section"
+}
+```
+
+#### Selector Types
+
+- **Element**: `"div"`, `"section"`, `"header"`
+- **Class**: `".hero-section"`, `".main-content"`, `".navigation"`
+- **ID**: `"#banner"`, `"#navigation"`, `"#footer"`
+- **Complex**: `"section.hero"`, `"header#main-header"`, `"div.content-wrapper"`
+- **Multiple Classes (Chained)**: `".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"`
+- **Data Attributes**: `"[data-id='bb4cf52']"`, `"[data-element_type='container']"`
+
+#### ⚠️ Important: Class Selector Format
+
+When copying class names from HTML, you need to format them correctly:
+
+**❌ Wrong (space-separated):**
+
+```json
+"selector": "elementor-element elementor-element-bb4cf52 e-flex e-con-boxed e-con e-parent e-lazyloaded"
+```
+
+**✅ Correct (chained with dots):**
+
+```json
+"selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"
+```
+
+**✅ Alternative (data attribute - more reliable):**
+
+```json
+"selector": "[data-id='bb4cf52']"
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "url": "https://example.com",
+  "selector": ".hero-section",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "summary": {
+    "total": 2,
+    "successful": 2,
+    "failed": 0
+  },
+  "screenshots": [
+    {
+      "device": "mobile",
+      "url": "http://localhost:3000/uploads/1705315800000_mobile_hero_section_abc123.png",
+      "viewport": {
+        "width": 375,
+        "height": 812
+      },
+      "selector": ".hero-section",
+      "elementBounds": {
+        "x": 0,
+        "y": 100,
+        "width": 375,
+        "height": 400
+      }
+    },
+    {
+      "device": "desktop",
+      "url": "http://localhost:3000/uploads/1705315800000_desktop_hero_section_def456.png",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "selector": ".hero-section",
+      "elementBounds": {
+        "x": 0,
+        "y": 80,
+        "width": 1920,
+        "height": 600
+      }
+    }
+  ]
+}
+```
+
+#### Device Requirements
+
+- **Minimum**: 1 device required
+- **Maximum**: All available devices (mobile, tablet, laptop, desktop)
+- **Validation**: Invalid devices will return error with valid options
+
 ### 📱 Available Devices
 
 **GET** `/capture/devices`
@@ -143,19 +246,51 @@ List all available device presets and their configurations.
 }
 ```
 
-### 🗑️ Clear All Images
+### 🧹 Manual Cleanup
 
-**DELETE** `/capture/clear`
+**POST** `/capture/cleanup`
 
-Delete all screenshot images from the uploads directory.
+Manually trigger cleanup of screenshots older than 10 hours.
 
 #### Response
 
 ```json
 {
   "success": true,
-  "message": "Successfully deleted 5 images",
-  "deletedCount": 5
+  "message": "Cleanup completed",
+  "result": {
+    "success": true,
+    "deletedCount": 3,
+    "totalChecked": 8,
+    "duration": 1250,
+    "errors": [],
+    "timestamp": "2024-01-15T10:30:00.000Z"
+  }
+}
+```
+
+### 📊 Cleanup Status
+
+**GET** `/capture/cleanup/status`
+
+Get cleanup service status and statistics.
+
+#### Response
+
+```json
+{
+  "success": true,
+  "cleanup": {
+    "isRunning": false,
+    "lastCleanup": "2024-01-15T10:30:00.000Z",
+    "cleanupIntervalHours": 10,
+    "stats": {
+      "totalDeleted": 15,
+      "lastRun": "2024-01-15T10:30:00.000Z",
+      "errors": []
+    },
+    "nextScheduledRun": "2024-01-15T12:00:00.000Z"
+  }
 }
 ```
 
@@ -171,7 +306,10 @@ Server health and status information with uptime and version.
 {
   "status": "healthy",
   "timestamp": "2024-01-15T10:30:00.000Z",
-  "uptime": 3600.5,
+  "uptime": {
+    "seconds": 3600,
+    "formatted": "1h 0m 0s"
+  },
   "version": "1.0.0",
   "environment": "development"
 }
@@ -192,7 +330,7 @@ Direct access to captured screenshot files with proper caching headers.
 ## Device Presets
 
 | Device  | Width × Height | Scale Factor | Mobile | Touch |
-|---------|----------------|--------------|--------|-------|
+| ------- | -------------- | ------------ | ------ | ----- |
 | Mobile  | 375 × 812      | 2×           | ✓      | ✓     |
 | Tablet  | 768 × 1024     | 2×           | ✓      | ✓     |
 | Laptop  | 1366 × 768     | 1×           | ✗      | ✗     |
@@ -216,16 +354,80 @@ curl -X POST http://localhost:3000/capture \
   -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"]}'
 ```
 
+### Section Screenshots
+
+#### Capture by Class
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".hero-section"}'
+```
+
+#### Capture by ID
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": "#main-banner"}'
+```
+
+#### Capture by Element
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "tablet", "laptop", "desktop"], "selector": "header"}'
+```
+
+#### Complex Selector
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["desktop"], "selector": "section.hero#main-hero"}'
+```
+
+#### Multiple Classes (Elementor Example)
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": ".elementor-element.elementor-element-bb4cf52"}'
+```
+
+#### Full Class String (Chained)
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["tablet"], "selector": ".elementor-element.elementor-element-bb4cf52.e-flex.e-con-boxed.e-con.e-parent.e-lazyloaded"}'
+```
+
+#### Data Attribute Selector (Recommended)
+
+```bash
+curl -X POST http://localhost:3000/capture/section \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://example.com", "devices": ["mobile", "desktop"], "selector": "[data-id=\'bb4cf52\']"}'
+```
+
 ### Check Available Devices
 
 ```bash
 curl http://localhost:3000/capture/devices
 ```
 
-### Clear All Screenshots
+### Manual Cleanup
 
 ```bash
-curl -X DELETE http://localhost:3000/capture/clear
+curl -X POST http://localhost:3000/capture/cleanup
+```
+
+### Check Cleanup Status
+
+```bash
+curl http://localhost:3000/capture/cleanup/status
 ```
 
 ### Health Check
@@ -244,6 +446,7 @@ website-screenshot-server/
 │   ├── browserManager.js     # Browser instance management
 │   ├── config.js             # Device presets configuration
 │   ├── screenshotService.js  # Core screenshot logic
+│   ├── cleanupService.js     # Automatic cleanup service
 │   ├── middleware/
 │   │   ├── errorHandler.js   # Error handling & logging
 │   │   └── static.js         # Static file serving
@@ -363,11 +566,13 @@ RATE_LIMIT_MAX_REQUESTS=100
 ## Dependencies
 
 **Core:**
+
 - **Express.js** - Web framework
 - **Playwright** - Browser automation
 - **Helmet** - Security headers
 - **CORS** - Cross-origin support
 - **express-rate-limit** - Rate limiting
+- **node-cron** - Scheduled cleanup tasks
 
 ## Troubleshooting
 

@@ -4,18 +4,59 @@ const browserManager = require("./browserManager");
 const { DEVICE_PRESETS } = require("./config");
 
 class ScreenshotService {
-  constructor(baseUrl = null) {
-    this.timeout = 60000;
+  constructor(baseUrl = null, options = {}) {
+    const parseMs = (val, fallback) => {
+      const n = Number(val);
+      return Number.isFinite(n) && n > 0 ? n : fallback;
+    };
+
+    const envFastMode = String(process.env.FAST_MODE || "").toLowerCase();
+    this.fastMode = Boolean(
+      options.fastMode ?? (envFastMode === "1" || envFastMode === "true")
+    );
+
+    this.timeout = parseMs(
+      process.env.PAGE_TIMEOUT_MS,
+      this.fastMode ? 15000 : 30000
+    );
     this.uploadsDir = path.join(process.cwd(), "uploads");
     this.baseUrl = baseUrl;
+
+    const baseWaits = {
+      networkIdleTimeout: this.fastMode ? 1500 : 12000,
+      animationTimeout: this.fastMode ? 1000 : 5000,
+      lazyContentTimeout: this.fastMode ? 1500 : 12000,
+      stabilityTimeout: this.fastMode ? 1000 : 8000,
+      stabilityChecks: this.fastMode ? 1 : 2,
+      maxRetries: this.fastMode ? 1 : 2,
+      apiWaitTimeout: this.fastMode ? 1500 : 12000,
+    };
+
     this.waitConfig = Object.freeze({
-      networkIdleTimeout: 8000,
-      animationTimeout: 5000,
-      lazyContentTimeout: 8000,
-      stabilityTimeout: 5000,
-      stabilityChecks: 2,
-      maxRetries: 2,
-      apiWaitTimeout: 10000,
+      networkIdleTimeout: parseMs(
+        process.env.NETWORK_IDLE_TIMEOUT_MS,
+        baseWaits.networkIdleTimeout
+      ),
+      animationTimeout: parseMs(
+        process.env.ANIMATION_TIMEOUT_MS,
+        baseWaits.animationTimeout
+      ),
+      lazyContentTimeout: parseMs(
+        process.env.LAZY_CONTENT_TIMEOUT_MS,
+        baseWaits.lazyContentTimeout
+      ),
+      stabilityTimeout: parseMs(
+        process.env.STABILITY_TIMEOUT_MS,
+        baseWaits.stabilityTimeout
+      ),
+      stabilityChecks: Number(
+        process.env.STABILITY_CHECKS ?? baseWaits.stabilityChecks
+      ),
+      maxRetries: Number(process.env.MAX_RETRIES ?? baseWaits.maxRetries),
+      apiWaitTimeout: parseMs(
+        process.env.API_WAIT_TIMEOUT_MS,
+        baseWaits.apiWaitTimeout
+      ),
     });
   }
 
@@ -35,10 +76,15 @@ class ScreenshotService {
     }
   }
 
-  generateFilename(device) {
-    const timestamp = Date.now();
+  generateFilename(device, section = null) {
+    const now = new Date();
+    const dateStr = now.toISOString().split("T")[0];
+    const timeStr = now.toTimeString().split(" ")[0].replace(/:/g, "-");
     const random = Math.random().toString(36).substring(2, 8);
-    return `${timestamp}_${device}_${random}.png`;
+    const sectionSuffix = section
+      ? `_${section.replace(/[^a-zA-Z0-9]/g, "_")}`
+      : "";
+    return `${dateStr}_${timeStr}_${device}${sectionSuffix}_${random}.png`;
   }
 
   async captureScreenshot(url, device) {
@@ -101,6 +147,91 @@ class ScreenshotService {
     }
   }
 
+  async captureSectionScreenshot(url, device, selector) {
+    this.validateUrl(url);
+
+    const deviceConfig = DEVICE_PRESETS[device];
+    if (!deviceConfig) {
+      throw new Error(`Unknown device: ${device}`);
+    }
+
+    let context, page;
+
+    try {
+      console.log(
+        `Starting section screenshot capture for ${device}: ${url} (selector: ${selector})`
+      );
+
+      context = await browserManager.createContext(deviceConfig);
+      page = await context.newPage();
+
+      page.setDefaultTimeout(this.timeout);
+      page.setDefaultNavigationTimeout(this.timeout);
+
+      console.log(`Navigating to ${url}...`);
+      await this.navigateAndWaitForCompleteWithRetry(page, url);
+
+      console.log(`Triggering lazy loading for ${device}...`);
+      await this.triggerLazyLoading(page);
+
+      console.log(`Waiting for element with selector: ${selector}`);
+      await page.waitForSelector(selector, { visible: true, timeout: 10000 });
+
+      const element = await page.$(selector);
+      if (!element) {
+        throw new Error(`Element not found with selector: ${selector}`);
+      }
+
+      const boundingBox = await element.boundingBox();
+      if (!boundingBox) {
+        throw new Error(
+          `Element is not visible or has no dimensions: ${selector}`
+        );
+      }
+
+      console.log(`Element found at position: ${JSON.stringify(boundingBox)}`);
+
+      const filename = this.generateFilename(device, selector);
+      const filepath = path.join(this.uploadsDir, filename);
+
+      console.log(`Capturing section screenshot for ${device}...`);
+
+      await element.screenshot({
+        path: filepath,
+        type: "png",
+        animations: "disabled",
+        optimizeForSpeed: true,
+      });
+
+      console.log(`Section screenshot saved: ${filename}`);
+
+      const imageUrl = this.baseUrl
+        ? `${this.baseUrl}/uploads/${filename}`
+        : `/uploads/${filename}`;
+
+      return {
+        device,
+        filename,
+        url: imageUrl,
+        viewport: { width: deviceConfig.width, height: deviceConfig.height },
+        selector,
+        elementBounds: {
+          x: Math.round(boundingBox.x),
+          y: Math.round(boundingBox.y),
+          width: Math.round(boundingBox.width),
+          height: Math.round(boundingBox.height),
+        },
+      };
+    } catch (error) {
+      console.error(`Section screenshot failed for ${device}:`, error.message);
+      throw new Error(
+        `Section screenshot capture failed for ${device}: ${error.message}`
+      );
+    } finally {
+      await Promise.allSettled([page?.close(), context?.close()]);
+    }
+  }
+
   async navigateAndWaitForCompleteWithRetry(page, url) {
     let lastError;
 
@@ -131,7 +262,7 @@ class ScreenshotService {
     console.log("Starting optimized page navigation and waiting...");
 
     await page.goto(url, {
-      waitUntil: "domcontentloaded",
+      waitUntil: this.fastMode ? "domcontentloaded" : "load",
       timeout: this.timeout,
     });
 
@@ -146,6 +277,10 @@ class ScreenshotService {
     } catch (error) {
       console.log("Network idle timeout - continuing");
     }
+
+    await this.waitForFonts(page);
+
+    await this.waitForAllImages(page);
 
     await Promise.all([
       this.waitForActiveApiRequests(page),
@@ -192,6 +327,42 @@ class ScreenshotService {
     };
   }
 
+  async captureMultipleSections(url, devices, selector) {
+    await this.ensureUploadsDirectory();
+
+    console.log(
+      `Capturing section screenshots for ${
+        devices.length
+      } devices: ${devices.join(", ")} (selector: ${selector})`
+    );
+
+    const screenshotPromises = devices.map((device) =>
+      this.captureSectionScreenshot(url, device, selector).catch((error) => ({
+        device,
+        error: error.message,
+        success: false,
+      }))
+    );
+
+    const results = await Promise.all(screenshotPromises);
+    const successful = results.filter((result) => !result.error);
+    const failed = results.filter((result) => result.error);
+
+    console.log(
+      `Section screenshots completed: ${successful.length} successful, ${failed.length} failed`
+    );
+
+    return {
+      url,
+      selector,
+      screenshots: successful,
+      errors: failed,
+      total: devices.length,
+      successful: successful.length,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   async waitForAnimationsComplete(page) {
     try {
       await page.waitForFunction(
@@ -207,6 +378,76 @@ class ScreenshotService {
       console.log("Animations completed");
     } catch (error) {
       console.log("Animation timeout - proceeding");
+    }
+  }
+
+  async waitForFonts(page) {
+    try {
+      console.log("Waiting for fonts to be ready...");
+      await page.evaluate(async () => {
+        if (document.fonts && document.fonts.ready) {
+          await document.fonts.ready;
+        }
+      });
+      console.log("Fonts ready");
+    } catch (error) {
+      console.log("Font readiness timeout - proceeding");
+    }
+  }
+
+  async waitForAllImages(page) {
+    try {
+      console.log("Ensuring all images are loaded (time-limited)...");
+      const deadlineMs =
+        Date.now() + (this.waitConfig.lazyContentTimeout || 1500);
+
+      await page.evaluate(async (deadline) => {
+        const timeLeft = () => Math.max(0, deadline - Date.now());
+
+        const withTimeout = (p, ms) =>
+          new Promise((resolve) => {
+            let settled = false;
+            const to = setTimeout(() => {
+              if (!settled) {
+                settled = true;
+                resolve(true);
+              }
+            }, ms);
+            p.finally(() => {
+              if (!settled) {
+                settled = true;
+                clearTimeout(to);
+                resolve(true);
+              }
+            });
+          });
+
+        const loadImage = (img) =>
+          new Promise((resolve) => {
+            try {
+              if (img.complete && img.naturalWidth > 0) return resolve(true);
+              const done = () => resolve(true);
+              img.addEventListener("load", done, { once: true });
+              img.addEventListener("error", done, { once: true });
+            } catch {
+              resolve(true);
+            }
+          });
+
+        const images = Array.from(document.images || []);
+        const promises = images.map((img) =>
+          withTimeout(loadImage(img), Math.max(50, timeLeft()))
+        );
+        await Promise.race([
+          Promise.all(promises),
+          new Promise((resolve) =>
+            setTimeout(resolve, Math.max(0, timeLeft()))
+          ),
+        ]);
+      }, deadlineMs);
+      console.log("Image load wait done (not blocking)");
+    } catch (error) {
+      console.log("Image load wait error - proceeding");
     }
   }
 
@@ -442,44 +683,90 @@ class ScreenshotService {
   async triggerLazyLoading(page) {
     try {
       console.log("Triggering optimized lazy loading...");
-
-      const { pageHeight, viewportHeight } = await page.evaluate(() => ({
-        pageHeight: Math.max(
-          document.body.scrollHeight,
-          document.documentElement.scrollHeight
-        ),
-        viewportHeight: window.innerHeight,
-      }));
-
-      const scrollSteps = Math.min(Math.ceil(pageHeight / viewportHeight), 5);
-
-      for (let i = 0; i <= scrollSteps; i++) {
-        const scrollPosition = (i / scrollSteps) * pageHeight;
-        await page.evaluate((pos) => {
-          window.scrollTo(0, pos);
-          window.dispatchEvent(new Event("scroll"));
-        }, scrollPosition);
-
-        await page.waitForTimeout(200);
-      }
-
-      await page.evaluate(() => window.scrollTo(0, 0));
-
       await page.evaluate(() => {
-        const lazyImages = document.querySelectorAll(
-          'img[data-src], img[loading="lazy"]'
-        );
-        lazyImages.forEach((img) => {
-          if (img.dataset.src && !img.src) {
-            img.src = img.dataset.src;
+        const setEager = (img) => {
+          try {
+            img.loading = "eager";
+            if (img.hasAttribute("data-src") && !img.src) {
+              img.src = img.getAttribute("data-src");
+            }
+            if (img.hasAttribute("data-srcset") && !img.srcset) {
+              img.srcset = img.getAttribute("data-srcset");
+            }
+          } catch {}
+        };
+
+        document.querySelectorAll("img").forEach(setEager);
+        document.querySelectorAll("picture source").forEach((s) => {
+          if (s.hasAttribute("data-srcset") && !s.srcset) {
+            s.srcset = s.getAttribute("data-srcset");
           }
         });
 
+        const OriginalIO = window.IntersectionObserver;
+        if (OriginalIO && !window.__ioPatched) {
+          window.__ioPatched = true;
+          window.IntersectionObserver = function (cb, options) {
+            const fake = new OriginalIO(cb, options);
+            setTimeout(() => {
+              try {
+                cb(
+                  [
+                    {
+                      isIntersecting: true,
+                      intersectionRatio: 1,
+                    },
+                  ],
+                  fake
+                );
+              } catch {}
+            }, 0);
+            return fake;
+          };
+        }
+      });
+
+      const budgetMs = this.fastMode ? 1500 : 5000;
+      const deadline = Date.now() + budgetMs;
+
+      let iterations = 0;
+      while (Date.now() < deadline && iterations < 40) {
+        const { y, max, vh } = await page.evaluate(() => ({
+          y: window.scrollY || window.pageYOffset || 0,
+          max:
+            Math.max(
+              document.body.scrollHeight,
+              document.documentElement.scrollHeight
+            ) - window.innerHeight,
+          vh: window.innerHeight,
+        }));
+
+        const atBottom = y >= max - 2;
+        if (atBottom) break;
+
+        const next = Math.min(y + Math.floor(vh * 0.9), max);
+        await page.evaluate((pos) => {
+          window.scrollTo(0, pos);
+          window.dispatchEvent(new Event("scroll"));
+        }, next);
+        await page.waitForTimeout(this.fastMode ? 120 : 200);
+
+        iterations++;
+      }
+
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        window.dispatchEvent(new Event("scroll"));
+      });
+      await page.waitForTimeout(this.fastMode ? 150 : 300);
+
+      await page.evaluate(() => {
         window.dispatchEvent(new Event("scroll"));
         window.dispatchEvent(new Event("resize"));
       });
 
-      await page.waitForTimeout(800);
+      await page.waitForTimeout(this.fastMode ? 250 : 600);
+      await this.waitForAllImages(page);
 
       console.log("Optimized lazy loading complete");
     } catch (error) {

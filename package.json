@@ -7,12 +7,9 @@
   "scripts": {
     "start": "node app.js",
     "dev": "node --watch app.js",
-    "prod": "node app.js",
     "install-browsers": "npx playwright install chromium --with-deps",
     "postinstall": "npm run install-browsers",
-    "test": "node --test tests/**/*.test.js",
     "health": "curl -f http://localhost:3000/health || exit 1",
-    "lint": "echo 'No linting configured'",
     "clean": "rm -rf uploads/*.png"
   },
   "keywords": [
@@ -31,11 +28,12 @@
     "url": "https://github.com/yourusername/website-screenshot-server.git"
   },
   "dependencies": {
-    "express": "^4.19.2",
-    "playwright": "^1.45.0",
     "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
-    "express-rate-limit": "^7.4.0"
+    "node-cron": "^3.0.3",
+    "playwright": "^1.45.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

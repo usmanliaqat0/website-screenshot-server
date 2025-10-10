@@ -79,7 +79,8 @@ class BrowserManager {
         width: deviceConfig.width,
         height: deviceConfig.height,
       },
-      deviceScaleFactor: deviceConfig.deviceScaleFactor,
+      deviceScaleFactor:
+        deviceConfig.deviceScaleFactor || deviceConfig.scaleFactor || 1,
       isMobile: deviceConfig.isMobile,
       hasTouch: deviceConfig.hasTouch,
       userAgent: deviceConfig.isMobile
@@ -87,6 +88,10 @@ class BrowserManager {
         : USER_AGENTS.desktop,
       reducedMotion: "reduce",
       colorScheme: "light",
+      javaScriptEnabled: true,
+      bypassCSP: true,
+      ignoreHTTPSErrors: true,
+      acceptDownloads: false,
     };
 
     return browser.newContext(contextOptions);
